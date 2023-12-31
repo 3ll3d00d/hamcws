@@ -35,7 +35,7 @@ jobs:
         run: poetry install --no-interaction
       - name: Generate changelog
         id: changelog
-        uses: metcalfc/changelog-generator@v4.0.1
+        uses: metcalfc/changelog-generator@v4.2.0
         with:
           myToken: ${{ secrets.GITHUB_TOKEN }}
       - name: Create release
@@ -53,12 +53,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Get latest release version number
-        id: get_version
-        uses: battila7/get-version-action@v2
-      - name: Set version
-        run: |
-          echo ${{ steps.get_version.outputs.version-without-v }} > cmdserver/VERSION
       - name: Set up Python 3.11
         uses: actions/setup-python@v4
         with:

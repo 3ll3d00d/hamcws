@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "hamwcs"
-version = "0.0.1"
+version = "0.0.2"
 description = "homeassistant friendly wrapper for J River MCWS"
 authors = ["3ll3d00d <mattkhan+hamcws@gmail.com>"]
 license = "MIT"
@@ -9,7 +9,6 @@ homepage = "http://github.com/3ll3d00d/hamcws"
 repository = "http://github.com/3ll3d00d/hamcws"
 include = [
     "LICENSE",
-    "hamcws/VERSION"
 ]
 packages = [
     { include = "hamcws" }
