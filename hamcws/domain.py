@@ -31,9 +31,16 @@ class PlaybackInfo:
         self.volume: float = float(resp_info['Volume'])
         self.muted: bool = resp_info['VolumeDisplay'] == 'Muted'
         self.image_url: str = resp_info.get('ImageURL', '')
+        self.name: str = resp_info.get('Name', '')
+        self.live_input: bool = self.name == 'Ipc'
+        # music only
         self.artist: str = resp_info.get('Artist', '')
         self.album: str = resp_info.get('Album', '')
-        self.name: str = resp_info.get('Name', '')
+        # TV only
+        self.series: str = resp_info.get('Series', '')
+        self.season: str = resp_info.get('Season', '')
+        self.episode: str = resp_info.get('Episode', '')
+
         self.media_type = MediaType[resp_info['Media Type']] if 'Media Type' in resp_info else MediaType.NotAvailable
         if 'Media Sub Type' in resp_info:
             self.media_sub_type = MediaSubType[resp_info['Media Sub Type'].replace(' ', '_')]

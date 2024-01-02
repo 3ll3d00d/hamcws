@@ -29,7 +29,12 @@ class MediaServerConnection:
 
         self._timeout = timeout
         self._auth = BasicAuth(username, password) if username is not None else None
-        self._base_url = f"http{'s' if ssl else ''}://{host}:{port}/MCWS/v1"
+        self._host_url = f"http{'s' if ssl else ''}://{host}:{port}"
+        self._base_url = f"{self._host_url}/MCWS/v1"
+
+    @property
+    def host_url(self):
+        return self._host_url
 
     async def get_as_dict(self, path: str, params: dict | None = None) -> Tuple[bool, dict]:
         """ parses MCWS XML Item list as a dict taken where keys are Item.@name and value is Item.text """
@@ -111,6 +116,9 @@ class MediaServer:
     async def close(self):
         await self._conn.close()
 
+    def image_url(self, path: str) -> str:
+        return f'{self._conn.host_url}/{path}'
+
     async def alive(self) -> MediaServerInfo:
         """ returns true if server allows the connection. """
         ok, resp = await self._conn.get_as_dict('Alive')
@@ -130,7 +138,10 @@ class MediaServer:
             extra_fields = []
         extra_fields.append('Media Type')
         extra_fields.append('Media Sub Type')
-        params['Fields'] = ';'.join(extra_fields)
+        extra_fields.append('Series')
+        extra_fields.append('Season')
+        extra_fields.append('Episode')
+        params['Fields'] = ';'.join(set(extra_fields))
         ok, resp = await self._conn.get_as_dict("Playback/Info", params=params)
         return PlaybackInfo(resp)
 
