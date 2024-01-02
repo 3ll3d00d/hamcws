@@ -1,4 +1,5 @@
 """Implementation of a MCWS inteface."""
+from enum import Enum, auto
 from typing import Tuple, List, Callable, TypeVar, Union
 from xml.etree import ElementTree as et
 
@@ -38,6 +39,83 @@ class Zone:
 
     def __str__(self):
         return self.name
+
+
+class PlaybackState(Enum):
+    STOPPED = 0
+    PAUSED = 1
+    PLAYING = 2
+    WAITING = 3
+
+
+class MediaType(Enum):
+    NotAvailable = auto()
+    Video = auto()
+    Audio = auto()
+    Data = auto()
+    Image = auto()
+    TV = auto()
+    Playlist = auto()
+
+
+class MediaSubType(Enum):
+    NotAvailable = auto()
+    Adult = auto()
+    Animation = auto()
+    Audiobook = auto()
+    Book = auto()
+    Concert = auto()
+    Educational = auto()
+    Entertainment = auto()
+    Extras = auto()
+    Home_Video = auto()
+    Karaoke = auto()
+    Music = auto()
+    Music_Video = auto()
+    Other = auto()
+    Photo = auto()
+    Podcast = auto()
+    Radio = auto()
+    Ringtone = auto()
+    Short = auto()
+    Single = auto()
+    Sports = auto()
+    Stock = auto()
+    System = auto()
+    Test_Clip = auto()
+    Trailer = auto()
+    TV_Show = auto()
+    Workout = auto()
+
+
+class PlaybackInfo:
+    def __init__(self, resp_info: dict):
+        self.zone_id = int(resp_info['ZoneID'])
+        self.zone_name: str = resp_info['ZoneName']
+        self.state: PlaybackState = PlaybackState(int(resp_info['State']))
+        self.file_key: int = int(resp_info['FileKey'])
+        self.next_file_key: int = int(resp_info['NextFileKey'])
+        self.position_ms: int = int(resp_info['PositionMS'])
+        self.duration_ms: int = int(resp_info['DurationMS'])
+        self.volume: float = float(resp_info['Volume'])
+        self.image_url: str = resp_info.get('ImageURL', '')
+        self.artist: str = resp_info.get('Artist', '')
+        self.album: str = resp_info.get('Album', '')
+        self.name: str = resp_info.get('Name', '')
+        self.media_type = MediaType[resp_info['Media Type']] if 'Media Type' in resp_info else MediaType.NotAvailable
+        if 'Media Sub Type' in resp_info:
+            self.media_sub_type = MediaSubType[resp_info['Media Sub Type'].replace(' ', '_')]
+        else:
+            self.media_sub_type = MediaSubType.NotAvailable
+        if 'Playback Info' in resp_info:
+            # TODO parse into a nested dict
+            self.playback_info: str = resp_info.get('Playback Info', '')
+
+    def __str__(self):
+        val = f'[{self.zone_name} : {self.state.name}]'
+        if self.file_key != -1:
+            val = f'{val} {self.file_key} ({self.media_type.name} / {self.media_sub_type.name})'
+        return val
 
 
 I = TypeVar("I", bound=Union[str, dict])
@@ -157,14 +235,16 @@ class MediaServer:
         active_zone_id = resp['CurrentZoneID']
         return [Zone(resp, i, active_zone_id) for i in range(num_zones)]
 
-    async def get_playback_info(self, zone: Zone | None = None, extra_fields: List[str] | None = None) -> dict:
+    async def get_playback_info(self, zone: Zone | None = None, extra_fields: List[str] | None = None) -> PlaybackInfo:
+        """ info about the current state of playback in the specified zone. """
         params = self.__zone_params(zone)
-        if extra_fields:
-            params['Fields'] = ';'.join(extra_fields)
-        ok, resp = await self._conn.get_as_dict("Playback/Info")
-        if 'Playback Info' in extra_fields:
-            pass  # parse into a nested dict
-        return resp
+        if not extra_fields:
+            extra_fields = []
+        extra_fields.append('Media Type')
+        extra_fields.append('Media Sub Type')
+        params['Fields'] = ';'.join(extra_fields)
+        ok, resp = await self._conn.get_as_dict("Playback/Info", params=params)
+        return PlaybackInfo(resp)
 
     @staticmethod
     def __zone_params(zone: Zone | None = None) -> dict:
@@ -263,12 +343,12 @@ class MediaServer:
         """Clear default playlist."""
         await self._conn.get_as_dict('Playback/ClearPlaylist', params=self.__zone_params(zone))
 
-    async def browse_children(self, base_id: int = -1):
+    async def browse_children(self, base_id: int = -1) -> dict:
         """ get the nodes under the given browse id """
         ok, resp = await self._conn.get_as_dict('Browse/Children', {'Version': 2, 'ErrorOnMissing': 0, 'ID': base_id})
         return resp
 
-    async def browse_files(self, base_id: int = -1):
+    async def browse_files(self, base_id: int = -1) -> list:
         """ get the files under the given browse id """
         ok, resp = await self._conn.get_as_json_list('Browse/Files', {'ID': base_id, 'Action': 'JSON'})
         return resp
