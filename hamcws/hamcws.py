@@ -141,6 +141,7 @@ class MediaServer:
         extra_fields.append('Series')
         extra_fields.append('Season')
         extra_fields.append('Episode')
+        extra_fields.append('Album Artist (auto)')
         params['Fields'] = ';'.join(set(extra_fields))
         ok, resp = await self._conn.get_as_dict("Playback/Info", params=params)
         return PlaybackInfo(resp)

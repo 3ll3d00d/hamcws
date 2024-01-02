@@ -36,6 +36,7 @@ class PlaybackInfo:
         # music only
         self.artist: str = resp_info.get('Artist', '')
         self.album: str = resp_info.get('Album', '')
+        self.album_artist: str = resp_info.get('Album Artist (auto)', '')
         # TV only
         self.series: str = resp_info.get('Series', '')
         self.season: str = resp_info.get('Season', '')
