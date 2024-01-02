@@ -13,6 +13,11 @@ class MediaServerInfo:
     def __str__(self):
         return f'{self.name} [{self.version}]'
 
+    def __eq__(self, other):
+        if isinstance(other, MediaServerInfo):
+            return self.name == other.name and self.version == other.version
+        return False
+
 
 class PlaybackInfo:
     def __init__(self, resp_info: dict):
