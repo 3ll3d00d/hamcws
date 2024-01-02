@@ -2,7 +2,7 @@
 from typing import Tuple, List, Callable, TypeVar, Union
 from xml.etree import ElementTree as et
 
-from aiohttp import ClientSession, ClientResponseError, BasicAuth
+from aiohttp import ClientSession, ClientResponseError, BasicAuth, ClientResponse
 
 
 class Zone:
@@ -40,6 +40,7 @@ class Zone:
         return self.name
 
 
+I = TypeVar("I", bound=Union[str, dict])
 T = TypeVar("T", bound=Union[list, dict])
 
 
@@ -65,23 +66,36 @@ class MediaServerConnection:
         self._base_url = f"http{'s' if ssl else ''}://{host}:{port}/MCWS/v1"
 
     async def get_as_dict(self, path: str, params: dict | None = None) -> Tuple[bool, dict]:
-        return await self.__get(path, _to_dict, params)
+        """ parses MCWS XML Item list as a dict taken where keys are Item.@name and value is Item.text """
+        return await self.__get(path, _to_dict, lambda r: r.text(), params)
+
+    async def get_as_json_list(self, path: str, params: dict | None = None) -> Tuple[bool, list]:
+        """ returns a json response as is (response must supply a list) """
+        return await self.__get(path, lambda d: (True, d), lambda r: r.json(), params)
+
+    async def get_as_json_dict(self, path: str, params: dict | None = None) -> Tuple[bool, dict]:
+        """ returns a json response as is (response must supply a dict) """
+        return await self.__get(path, lambda d: (True, d), lambda r: r.json(), params)
 
     async def get_as_list(self, path: str, params: dict | None = None) -> Tuple[bool, list]:
-        return await self.__get(path, _to_list, params)
+        """ parses MCWS XML Item list as a list of values taken from the element text """
+        return await self.__get(path, _to_list, lambda r: r.text(), params)
 
-    async def __get(self, path: str, parser: Callable[[str], Tuple[bool, T]],
+    async def __get(self, path: str, parser: Callable[[I], Tuple[bool, T]], reader: Callable[[ClientResponse], I],
                     params: dict | None = None) -> Tuple[bool, T]:
-        async with self._session.get(f'{self._base_url}/{path}', params=params, timeout=self._timeout,
-                                     auth=self._auth) as resp:
+        async with self._session.get(self.get_url(path), params=params, timeout=self._timeout, auth=self._auth) as resp:
             try:
                 resp.raise_for_status()
-                return parser(await resp.text())
+                content = await reader(resp)
+                return parser(content)
             except ClientResponseError as e:
                 if e.status == 401:
                     raise InvalidAuthError from e
                 else:
                     raise CannotConnectError from e
+
+    def get_url(self, path: str) -> str:
+        return f'{self._base_url}/{path}'
 
     async def close(self):
         """Close the connection if necessary."""
@@ -131,10 +145,10 @@ class MediaServer:
     async def close(self):
         await self._conn.close()
 
-    async def can_connect(self) -> bool:
+    async def alive(self) -> dict:
         """ returns true if server allows the connection. """
-        ok, resp = await self._conn.get_as_dict('Authenticate')
-        return 'Token' in resp.keys()
+        ok, resp = await self._conn.get_as_dict('Alive')
+        return resp
 
     async def get_zones(self) -> List[Zone]:
         """ all known zones """
@@ -249,7 +263,28 @@ class MediaServer:
         """Clear default playlist."""
         await self._conn.get_as_dict('Playback/ClearPlaylist', params=self.__zone_params(zone))
 
-    async def get_artists(self) -> list:
+    async def browse_children(self, base_id: int = -1):
+        """ get the nodes under the given browse id """
+        ok, resp = await self._conn.get_as_dict('Browse/Children', {'Version': 2, 'ErrorOnMissing': 0, 'ID': base_id})
+        return resp
+
+    async def browse_files(self, base_id: int = -1):
+        """ get the files under the given browse id """
+        ok, resp = await self._conn.get_as_json_list('Browse/Files', {'ID': base_id, 'Action': 'JSON'})
+        return resp
+
+    async def play_browse_files(self, base_id: int = -1, zone: Zone | None = None):
+        """ play the files under the given browse id """
+        ok, resp = await self._conn.get_as_dict('Browse/Files',
+                                                {'ID': base_id, 'Action': 'Play', 'PlayMode': 'Add',
+                                                 **self.__zone_params(zone)})
+        return resp
+
+    def get_browse_thumbnail_url(self, base_id: int = -1):
+        """ the image thumbnail for the browse node id """
+        return f'{self._conn.get_url("Browse/Image")}?UseStackedImages=1&Format=jpg&ID={base_id}'
+
+    async def get_artists(self, artist_node_id=None) -> list:
         """Get artists list."""
         ok, resp = await self._conn.get_as_list('Library/Values',
                                                 params={'Field': 'Artist', 'Files': AUDIO_FILTER})
