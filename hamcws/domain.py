@@ -114,6 +114,7 @@ class MediaSubType(Enum):
     Extras = auto()
     Home_Video = auto()
     Karaoke = auto()
+    Movie = auto()
     Music = auto()
     Music_Video = auto()
     Other = auto()
