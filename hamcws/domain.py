@@ -29,6 +29,7 @@ class PlaybackInfo:
         self.position_ms: int = int(resp_info['PositionMS'])
         self.duration_ms: int = int(resp_info['DurationMS'])
         self.volume: float = float(resp_info['Volume'])
+        self.muted: bool = resp_info['VolumeDisplay'] == 'Muted'
         self.image_url: str = resp_info.get('ImageURL', '')
         self.artist: str = resp_info.get('Artist', '')
         self.album: str = resp_info.get('Album', '')
