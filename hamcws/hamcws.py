@@ -206,9 +206,7 @@ class MediaServerConnection:
         self._protocol = f'http{"s" if ssl else ""}'
         self._host_port = f'{host}:{port}'
         self._host_url = f'{self._protocol}://{self._host_port}'
-        self._host_url_with_auth = f'{self._protocol}://{username}:{password}@{self._host_port}' if username else self._host_url
         self._base_url = f"{self._host_url}/MCWS/v1"
-        self._base_url_with_auth = f"{self._host_url_with_auth}/MCWS/v1"
 
     @property
     def host_url(self):
@@ -244,14 +242,10 @@ class MediaServerConnection:
                 else:
                     raise CannotConnectError from e
 
-    def get_url(self, path: str, with_auth: bool = False) -> str:
-        if with_auth is True:
-            return f'{self._host_url_with_auth}/{path}'
+    def get_url(self, path: str) -> str:
         return f'{self._host_url}/{path}'
 
-    def get_mcws_url(self, path: str, with_auth: bool = False) -> str:
-        if with_auth is True:
-            return f'{self._base_url_with_auth}/{path}'
+    def get_mcws_url(self, path: str) -> str:
         return f'{self._base_url}/{path}'
 
     async def close(self):
@@ -297,13 +291,13 @@ class MediaServer:
     async def close(self):
         await self._conn.close()
 
-    def make_url(self, path: str, with_auth: bool = False) -> str:
-        return f'{self._conn.get_url(path, with_auth=with_auth)}'
+    def make_url(self, path: str) -> str:
+        return self._conn.get_url(path)
 
     def get_file_image_url(self, file_key: int) -> str:
         """ Get image URL for a file given the key. """
         params = f'File={file_key}&Type=Thumbnail&ThumbnailSize=Large&Format=png'
-        return f'{self._conn.get_mcws_url("File/GetImage", with_auth=True)}?{params}'
+        return f'{self._conn.get_mcws_url("File/GetImage")}?{params}'
 
     async def alive(self) -> MediaServerInfo:
         """ returns info about the instance, no authentication required. """
