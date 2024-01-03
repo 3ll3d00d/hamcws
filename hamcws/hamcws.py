@@ -218,7 +218,7 @@ class MediaServerConnection:
         """ parses MCWS XML Item list as a dict taken where keys are Item.@name and value is Item.text """
         return await self.__get(path, _to_dict, lambda r: r.text(), params)
 
-    async def get_as_json_list(self, path: str, params: dict | None = None) -> tuple[bool, list]:
+    async def get_as_json_list(self, path: str, params: dict | None = None) -> tuple[bool, list[dict]]:
         """ returns a json response as is (response must supply a list) """
         return await self.__get(path, lambda d: (True, d), lambda r: r.json(), params)
 
@@ -245,9 +245,9 @@ class MediaServerConnection:
                     raise CannotConnectError from e
 
     def get_mcws_url(self, path: str, with_auth: bool = False) -> str:
-        if with_auth:
-            return f'{self._host_url_with_auth}/{path}'
-        return f'{self._base_url_with_auth}/{path}'
+        if with_auth is True:
+            return f'{self._base_url_with_auth}/{path}'
+        return f'{self._base_url}/{path}'
 
     async def close(self):
         """Close the connection if necessary."""
