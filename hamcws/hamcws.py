@@ -244,6 +244,11 @@ class MediaServerConnection:
                 else:
                     raise CannotConnectError from e
 
+    def get_url(self, path: str, with_auth: bool = False) -> str:
+        if with_auth is True:
+            return f'{self._host_url_with_auth}/{path}'
+        return f'{self._host_url}/{path}'
+
     def get_mcws_url(self, path: str, with_auth: bool = False) -> str:
         if with_auth is True:
             return f'{self._base_url_with_auth}/{path}'
@@ -292,8 +297,8 @@ class MediaServer:
     async def close(self):
         await self._conn.close()
 
-    def make_url(self, path: str) -> str:
-        return f'{self._conn.host_url}/{path}'
+    def make_url(self, path: str, with_auth: bool = False) -> str:
+        return f'{self._conn.get_url(path, with_auth=with_auth)}'
 
     def get_file_image_url(self, file_key: int) -> str:
         """ Get image URL for a file given the key. """
