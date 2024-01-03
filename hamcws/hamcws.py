@@ -203,8 +203,12 @@ class MediaServerConnection:
 
         self._timeout = timeout
         self._auth = BasicAuth(username, password) if username is not None else None
-        self._host_url = f"http{'s' if ssl else ''}://{host}:{port}"
+        self._protocol = f'http{"s" if ssl else ""}'
+        self._host_port = f'{host}:{port}'
+        self._host_url = f'{self._protocol}://{self._host_port}'
+        self._host_url_with_auth = f'{self._protocol}://{username}:{password}@{self._host_port}' if username else self._host_url
         self._base_url = f"{self._host_url}/MCWS/v1"
+        self._base_url_with_auth = f"{self._host_url_with_auth}/MCWS/v1"
 
     @property
     def host_url(self):
@@ -228,7 +232,8 @@ class MediaServerConnection:
 
     async def __get(self, path: str, parser: Callable[[INPUT], tuple[bool, OUTPUT]],
                     reader: Callable[[ClientResponse], INPUT], params: dict | None = None) -> tuple[bool, OUTPUT]:
-        async with self._session.get(self.get_url(path), params=params, timeout=self._timeout, auth=self._auth) as resp:
+        async with self._session.get(self.get_mcws_url(path), params=params, timeout=self._timeout,
+                                     auth=self._auth) as resp:
             try:
                 resp.raise_for_status()
                 content = await reader(resp)
@@ -239,8 +244,10 @@ class MediaServerConnection:
                 else:
                     raise CannotConnectError from e
 
-    def get_url(self, path: str) -> str:
-        return f'{self._base_url}/{path}'
+    def get_mcws_url(self, path: str, with_auth: bool = False) -> str:
+        if with_auth:
+            return f'{self._host_url_with_auth}/{path}'
+        return f'{self._base_url_with_auth}/{path}'
 
     async def close(self):
         """Close the connection if necessary."""
@@ -285,8 +292,13 @@ class MediaServer:
     async def close(self):
         await self._conn.close()
 
-    def image_url(self, path: str) -> str:
+    def make_url(self, path: str) -> str:
         return f'{self._conn.host_url}/{path}'
+
+    async def get_file_image_url(self, file_key: int) -> str:
+        """ Get image URL for a file given the key. """
+        params = f'File={file_key}&Type=Thumbnail&ThumbnailSize=Large&Format=png'
+        return f'{self._conn.get_mcws_url("File/GetImage", with_auth=True)}?{params}'
 
     async def alive(self) -> MediaServerInfo:
         """ returns info about the instance, no authentication required. """
@@ -446,7 +458,7 @@ class MediaServer:
 
     def get_browse_thumbnail_url(self, base_id: int = -1):
         """ the image thumbnail for the browse node id """
-        return f'{self._conn.get_url("Browse/Image")}?UseStackedImages=1&Format=jpg&ID={base_id}'
+        return f'{self._conn.get_mcws_url("Browse/Image")}?UseStackedImages=1&Format=jpg&ID={base_id}'
 
     async def send_key_presses(self, keys: Sequence[KeyCommand | str], focus: bool = True) -> bool:
         """ send a sequence of key presses """
