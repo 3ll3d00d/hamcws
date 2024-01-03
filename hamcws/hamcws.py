@@ -289,9 +289,14 @@ class MediaServer:
         return f'{self._conn.host_url}/{path}'
 
     async def alive(self) -> MediaServerInfo:
-        """ returns true if server allows the connection. """
+        """ returns info about the instance, no authentication required. """
         ok, resp = await self._conn.get_as_dict('Alive')
         return MediaServerInfo(resp)
+
+    async def can_authenticate(self) -> bool:
+        """ True if able to authenticate (or if no auth is configured). """
+        ok, resp = await self._conn.get_as_dict('Authenticate')
+        return ok
 
     async def get_zones(self) -> list[Zone]:
         """ all known zones """
