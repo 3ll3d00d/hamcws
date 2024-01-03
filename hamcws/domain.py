@@ -1,5 +1,5 @@
 import datetime
-from enum import Enum, auto
+from enum import Enum, StrEnum
 
 
 class MediaServerInfo:
@@ -42,11 +42,18 @@ class PlaybackInfo:
         self.season: str = resp_info.get('Season', '')
         self.episode: str = resp_info.get('Episode', '')
 
-        self.media_type = MediaType[resp_info['Media Type']] if 'Media Type' in resp_info else MediaType.NotAvailable
-        if 'Media Sub Type' in resp_info:
-            self.media_sub_type = MediaSubType[resp_info['Media Sub Type'].replace(' ', '_')]
-        else:
-            self.media_sub_type = MediaSubType.NotAvailable
+        # noinspection PyBroadException
+        try:
+            self.media_type = MediaType(resp_info['Media Type'])
+        except:
+            self.media_type = MediaType.NOT_AVAILABLE
+
+        # noinspection PyBroadException
+        try:
+            self.media_sub_type = MediaSubType(resp_info['Media Sub Type'])
+        except:
+            self.media_sub_type = MediaSubType.NOT_AVAILABLE
+
         if 'Playback Info' in resp_info:
             # TODO parse into a nested dict
             self.playback_info: str = resp_info.get('Playback Info', '')
@@ -100,42 +107,42 @@ class PlaybackState(Enum):
     WAITING = 3
 
 
-class MediaType(Enum):
-    NotAvailable = auto()
-    Video = auto()
-    Audio = auto()
-    Data = auto()
-    Image = auto()
-    TV = auto()
-    Playlist = auto()
+class MediaType(StrEnum):
+    NOT_AVAILABLE = ''
+    VIDEO = 'Video'
+    AUDIO = 'Audio'
+    DATA = 'Data'
+    IMAGE = 'Image'
+    TV = 'TV'
+    PLAYLIST = 'Playlist'
 
 
-class MediaSubType(Enum):
-    NotAvailable = auto()
-    Adult = auto()
-    Animation = auto()
-    Audiobook = auto()
-    Book = auto()
-    Concert = auto()
-    Educational = auto()
-    Entertainment = auto()
-    Extras = auto()
-    Home_Video = auto()
-    Karaoke = auto()
-    Movie = auto()
-    Music = auto()
-    Music_Video = auto()
-    Other = auto()
-    Photo = auto()
-    Podcast = auto()
-    Radio = auto()
-    Ringtone = auto()
-    Short = auto()
-    Single = auto()
-    Sports = auto()
-    Stock = auto()
-    System = auto()
-    Test_Clip = auto()
-    Trailer = auto()
-    TV_Show = auto()
-    Workout = auto()
+class MediaSubType(StrEnum):
+    NOT_AVAILABLE = ''
+    ADULT = 'Adult'
+    ANIMATION = 'Animation'
+    AUDIOBOOK = 'Audiobook'
+    BOOK = 'Book'
+    CONCERT = 'Concert'
+    EDUCATIONAL = 'Educational'
+    ENTERTAINMENT = 'Entertainment'
+    EXTRAS = 'Extras'
+    HOME_VIDEO = 'Home Video'
+    KARAOKE = 'Karaoke'
+    MOVIE = 'Movie'
+    MUSIC = 'Music'
+    MUSIC_VIDEO = 'Music Video'
+    OTHER = 'Other'
+    PHOTO = 'Photo'
+    PODCAST = 'Podcast'
+    RADIO = 'Radio'
+    RINGTONE = 'Ringtone'
+    SHORT = 'Short'
+    SINGLE = 'Single'
+    SPORTS = 'Sports'
+    STOCK = 'Stock'
+    SYSTEM = 'System'
+    TEST_CLIP = 'Test Clip'
+    TRAILER = 'Trailer'
+    TV_SHOW = 'TV Show'
+    WORKOUT = 'Workout'

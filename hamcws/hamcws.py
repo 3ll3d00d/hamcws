@@ -199,7 +199,7 @@ class MediaServer:
         # TODO does it go to the start of the current track?
         await self._conn.get_as_dict('Playback/Previous', params=self.__zone_params(zone))
 
-    async def media_seek(self, position: float, zone: Zone | None = None) -> None:
+    async def media_seek(self, position: int, zone: Zone | None = None) -> None:
         """seek to a specified position in ms."""
         await self._conn.get_as_dict('Playback/Position', params={'Position': position, **self.__zone_params(zone)})
 
@@ -220,25 +220,6 @@ class MediaServer:
         await self._conn.get_as_dict('Control/MCC', params={'Command': '10005', 'Parameter': '4' if shuffle else '3',
                                                             **self.__zone_params(zone)})
 
-    async def _add_item_to_playlist(self, item):
-        # await self._server.Playlist.Add(**{"playlistid": 0, "item": item})
-        raise NotImplementedError
-
-    async def add_song_to_playlist(self, song_id):
-        """Add song to default playlist (i.e. playlistid=0)."""
-        # await self._add_item_to_playlist({"songid": song_id})
-        raise NotImplementedError
-
-    async def add_album_to_playlist(self, album_id):
-        """Add album to default playlist (i.e. playlistid=0)."""
-        # await self._add_item_to_playlist({"albumid": album_id})
-        raise NotImplementedError
-
-    async def add_artist_to_playlist(self, artist_id):
-        """Add album to default playlist (i.e. playlistid=0)."""
-        # await self._add_item_to_playlist({"artistid": artist_id})
-        raise NotImplementedError
-
     async def clear_playlist(self, zone: Zone | None = None):
         """Clear default playlist."""
         await self._conn.get_as_dict('Playback/ClearPlaylist', params=self.__zone_params(zone))
@@ -253,11 +234,11 @@ class MediaServer:
         ok, resp = await self._conn.get_as_json_list('Browse/Files', {'ID': base_id, 'Action': 'JSON'})
         return resp
 
-    async def play_browse_files(self, base_id: int = -1, zone: Zone | None = None):
+    async def play_browse_files(self, base_id: int = -1, zone: Zone | None = None, next: bool = True):
         """ play the files under the given browse id """
-        ok, resp = await self._conn.get_as_dict('Browse/Files',
-                                                {'ID': base_id, 'Action': 'Play', 'PlayMode': 'Add',
-                                                 **self.__zone_params(zone)})
+        ok, resp = await self._conn.get_as_dict('Browse/Files', {
+            'ID': base_id, 'Action': 'Play', 'PlayMode': 'NextToPlay' if next else 'Add', **self.__zone_params(zone)
+        })
         return resp
 
     def get_browse_thumbnail_url(self, base_id: int = -1):
