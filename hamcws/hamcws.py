@@ -295,7 +295,7 @@ class MediaServer:
     def make_url(self, path: str) -> str:
         return f'{self._conn.host_url}/{path}'
 
-    async def get_file_image_url(self, file_key: int) -> str:
+    def get_file_image_url(self, file_key: int) -> str:
         """ Get image URL for a file given the key. """
         params = f'File={file_key}&Type=Thumbnail&ThumbnailSize=Large&Format=png'
         return f'{self._conn.get_mcws_url("File/GetImage", with_auth=True)}?{params}'
