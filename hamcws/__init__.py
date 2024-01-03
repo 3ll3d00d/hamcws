@@ -3,9 +3,7 @@ from .hamcws import (
     MediaServer,
     MediaServerConnection,
     CannotConnectError,
-    InvalidAuthError
-)
-from .domain import (
+    InvalidAuthError,
     MediaServerInfo,
     PlaybackInfo,
     Zone,
