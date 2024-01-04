@@ -440,9 +440,13 @@ class MediaServer:
                                                 params={'Version': 2, 'ErrorOnMissing': 0, 'ID': base_id})
         return resp
 
-    async def browse_files(self, base_id: int = -1) -> list:
+    async def browse_files(self, base_id: int = -1, fields: list[str] = None) -> list[dict]:
         """ get the files under the given browse id """
-        ok, resp = await self._conn.get_as_json_list('Browse/Files', params={'ID': base_id, 'Action': 'JSON'})
+        field_list = ','.join(
+            ['Key', 'Name', 'Media Type', 'Media Sub Type', 'Series', 'Season', 'Episode', 'Artist', 'Album', 'Track #',
+             'Dimensions', 'HDR Format'] + (fields if fields else []))
+        ok, resp = await self._conn.get_as_json_list('Browse/Files',
+                                                     params={'ID': base_id, 'Action': 'JSON', 'Fields': field_list})
         return resp
 
     async def play_browse_files(self, base_id: int = -1, zone: Zone | None = None, play_next: bool = True):
