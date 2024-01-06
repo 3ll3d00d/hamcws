@@ -522,7 +522,7 @@ class MediaServer:
         })
         return ok
 
-    async def set_active_zone(self, zone: Zone) -> bool:
+    async def set_active_zone(self, zone: Zone | str) -> bool:
         """ set the active zone """
         if not zone:
             raise ValueError('zone is required')
