@@ -334,7 +334,8 @@ class MediaServer:
         active_zone_id = resp['CurrentZoneID']
         return [Zone(resp, i, active_zone_id) for i in range(num_zones)]
 
-    async def get_playback_info(self, zone: Zone | str | None = None, extra_fields: list[str] | None = None) -> PlaybackInfo:
+    async def get_playback_info(self, zone: Zone | str | None = None,
+                                extra_fields: list[str] | None = None) -> PlaybackInfo:
         """ info about the current state of playback in the specified zone. """
         params = self.__zone_params(zone)
         if not extra_fields:
@@ -435,10 +436,12 @@ class MediaServer:
         ok, resp = await self._conn.get_as_dict('Playback/PlayByKey', params={'Key': item, **self.__zone_params(zone)})
         return ok
 
-    async def play_playlist(self, playlist_id: str, zone: Zone | str | None = None) -> bool:
+    async def play_playlist(self, playlist_id: str, playlist_type: str = 'Path',
+                            zone: Zone | str | None = None) -> bool:
         """Play the given playlist."""
         ok, resp = await self._conn.get_as_dict('Playback/PlayPlaylist',
-                                                params={'Playlist': playlist_id, **self.__zone_params(zone)})
+                                                params={'Playlist': playlist_id, 'PlaylistType': playlist_type,
+                                                        **self.__zone_params(zone)})
         return ok
 
     async def play_file(self, file: str, zone: Zone | str | None = None) -> bool:
