@@ -486,6 +486,20 @@ class MediaServer:
         ok, resp = await self._conn.get_as_dict('Browse/Files', params=params)
         return resp
 
+    async def play_search(self, query: str, zone: Zone | str | None = None, play_next: bool | None = None):
+        """ play the files located by the query string. """
+        if not query:
+            raise ValueError('No query supplied')
+        params = {
+            'Query': query,
+            'Action': 'Play',
+            **self.__zone_params(zone)
+        }
+        if play_next is not None:
+            params['PlayMode'] = 'NextToPlay' if play_next else 'Add'
+        ok, resp = await self._conn.get_as_dict('Files/Search', params=params)
+        return resp
+
     async def send_key_presses(self, keys: Sequence[KeyCommand | str], focus: bool = True) -> bool:
         """ send a sequence of key presses """
         ok, resp = await self._conn.get_as_dict('Command/Key', params={
