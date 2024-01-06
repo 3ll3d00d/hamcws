@@ -474,7 +474,7 @@ class MediaServer:
                                                      params={'ID': base_id, 'Action': 'JSON', 'Fields': field_list})
         return resp
 
-    async def play_browse_files(self, base_id: int = -1, zone: Zone | str | None = None, play_next: bool = True):
+    async def play_browse_files(self, base_id: int = -1, zone: Zone | str | None = None, play_next: bool | None = None):
         """ play the files under the given browse id """
         params = {
             'ID': base_id,
