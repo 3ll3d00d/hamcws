@@ -334,7 +334,7 @@ class MediaServer:
         active_zone_id = resp['CurrentZoneID']
         return [Zone(resp, i, active_zone_id) for i in range(num_zones)]
 
-    async def get_playback_info(self, zone: Zone | None = None, extra_fields: list[str] | None = None) -> PlaybackInfo:
+    async def get_playback_info(self, zone: Zone | str | None = None, extra_fields: list[str] | None = None) -> PlaybackInfo:
         """ info about the current state of playback in the specified zone. """
         params = self.__zone_params(zone)
         if not extra_fields:
@@ -350,23 +350,30 @@ class MediaServer:
         return PlaybackInfo(resp)
 
     @staticmethod
-    def __zone_params(zone: Zone | None = None) -> dict:
-        return zone.as_query_params() if zone else {}
+    def __zone_params(zone: Zone | str | None = None) -> dict:
+        if isinstance(zone, str):
+            return {
+                'Zone': zone,
+                'ZoneType': 'Name'
+            }
+        if isinstance(zone, Zone):
+            return zone.as_query_params()
+        return {}
 
-    async def volume_up(self, step: float = 0.1, zone: Zone | None = None) -> float:
+    async def volume_up(self, step: float = 0.1, zone: Zone | str | None = None) -> float:
         """Send volume up command."""
         ok, resp = await self._conn.get_as_dict('Playback/Volume',
                                                 params={'Level': step, 'Relative': 1, **self.__zone_params(zone)})
         return float(resp['Level'])
 
-    async def volume_down(self, step: float = 0.1, zone: Zone | None = None) -> float:
+    async def volume_down(self, step: float = 0.1, zone: Zone | str | None = None) -> float:
         """Send volume down command."""
         ok, resp = await self._conn.get_as_dict('Playback/Volume',
                                                 params={'Level': f'{"-" if step > 0 else ""}{step}', 'Relative': 1,
                                                         **self.__zone_params(zone)})
         return float(resp['Level'])
 
-    async def set_volume_level(self, volume: float, zone: Zone | None = None) -> float:
+    async def set_volume_level(self, volume: float, zone: Zone | str | None = None) -> float:
         """Set volume level, range 0-100."""
         if volume < 0:
             raise ValueError(f'{volume} not in range 0-100')
@@ -376,28 +383,28 @@ class MediaServer:
         ok, resp = await self._conn.get_as_dict('Playback/Volume', params={'Level': volume, **self.__zone_params(zone)})
         return float(resp['Level'])
 
-    async def mute(self, mute: bool, zone: Zone | None = None) -> bool:
+    async def mute(self, mute: bool, zone: Zone | str | None = None) -> bool:
         """Send (un)mute command."""
         ok, resp = await self._conn.get_as_dict('Playback/Mute',
                                                 params={'Set': '1' if mute else '0', **self.__zone_params(zone)})
         return ok
 
-    async def play_pause(self, zone: Zone | None = None) -> bool:
+    async def play_pause(self, zone: Zone | str | None = None) -> bool:
         """Send play/pause command."""
         ok, resp = await self._conn.get_as_dict('Playback/PlayPause', params=self.__zone_params(zone))
         return ok
 
-    async def play(self, zone: Zone | None = None) -> bool:
+    async def play(self, zone: Zone | str | None = None) -> bool:
         """Send play command."""
         ok, resp = await self._conn.get_as_dict('Playback/Play', params=self.__zone_params(zone))
         return ok
 
-    async def pause(self, zone: Zone | None = None) -> bool:
+    async def pause(self, zone: Zone | str | None = None) -> bool:
         """Send pause command."""
         ok, resp = await self._conn.get_as_dict('Playback/Pause', params=self.__zone_params(zone))
         return ok
 
-    async def stop(self, zone: Zone | None = None) -> bool:
+    async def stop(self, zone: Zone | str | None = None) -> bool:
         """Send stop command."""
         ok, resp = await self._conn.get_as_dict('Playback/Stop', params=self.__zone_params(zone))
         return ok
@@ -407,47 +414,47 @@ class MediaServer:
         ok, resp = await self._conn.get_as_dict('Playback/StopAll')
         return ok
 
-    async def next_track(self, zone: Zone | None = None) -> bool:
+    async def next_track(self, zone: Zone | str | None = None) -> bool:
         """Send next track command."""
         ok, resp = await self._conn.get_as_dict('Playback/Next', params=self.__zone_params(zone))
         return ok
 
-    async def previous_track(self, zone: Zone | None = None) -> bool:
+    async def previous_track(self, zone: Zone | str | None = None) -> bool:
         """Send previous track command."""
         # TODO does it go to the start of the current track?
         ok, resp = await self._conn.get_as_dict('Playback/Previous', params=self.__zone_params(zone))
         return ok
 
-    async def media_seek(self, position: int, zone: Zone | None = None) -> bool:
+    async def media_seek(self, position: int, zone: Zone | str | None = None) -> bool:
         """seek to a specified position in ms."""
         ok, resp = await self._conn.get_as_dict('Playback/Position',
                                                 params={'Position': position, **self.__zone_params(zone)})
         return ok
 
-    async def play_item(self, item: str, zone: Zone | None = None) -> bool:
+    async def play_item(self, item: str, zone: Zone | str | None = None) -> bool:
         ok, resp = await self._conn.get_as_dict('Playback/PlayByKey', params={'Key': item, **self.__zone_params(zone)})
         return ok
 
-    async def play_playlist(self, playlist_id: str, zone: Zone | None = None) -> bool:
+    async def play_playlist(self, playlist_id: str, zone: Zone | str | None = None) -> bool:
         """Play the given playlist."""
         ok, resp = await self._conn.get_as_dict('Playback/PlayPlaylist',
                                                 params={'Playlist': playlist_id, **self.__zone_params(zone)})
         return ok
 
-    async def play_file(self, file: str, zone: Zone | None = None) -> bool:
+    async def play_file(self, file: str, zone: Zone | str | None = None) -> bool:
         """Play the given file."""
         ok, resp = await self._conn.get_as_dict('Playback/PlayByFilename',
                                                 params={'Filenames': file, **self.__zone_params(zone)})
         return ok
 
-    async def set_shuffle(self, shuffle: bool, zone: Zone | None = None) -> bool:
+    async def set_shuffle(self, shuffle: bool, zone: Zone | str | None = None) -> bool:
         """Set shuffle mode, for the first player."""
         ok, resp = await self._conn.get_as_dict('Control/MCC',
                                                 params={'Command': '10005', 'Parameter': '4' if shuffle else '3',
                                                         **self.__zone_params(zone)})
         return ok
 
-    async def clear_playlist(self, zone: Zone | None = None) -> bool:
+    async def clear_playlist(self, zone: Zone | str | None = None) -> bool:
         """Clear default playlist."""
         ok, resp = await self._conn.get_as_dict('Playback/ClearPlaylist', params=self.__zone_params(zone))
         return ok
@@ -467,7 +474,7 @@ class MediaServer:
                                                      params={'ID': base_id, 'Action': 'JSON', 'Fields': field_list})
         return resp
 
-    async def play_browse_files(self, base_id: int = -1, zone: Zone | None = None, play_next: bool = True):
+    async def play_browse_files(self, base_id: int = -1, zone: Zone | str | None = None, play_next: bool = True):
         """ play the files under the given browse id """
         params = {
             'ID': base_id,
@@ -487,7 +494,7 @@ class MediaServer:
         })
         return ok
 
-    async def send_mcc(self, command: int, param: int | None = None, zone: Zone | None = None,
+    async def send_mcc(self, command: int, param: int | None = None, zone: Zone | str | None = None,
                        block: bool = False) -> bool:
         """ send the MCC command """
         ok, resp = await self._conn.get_as_dict('Command/MCC', params={
