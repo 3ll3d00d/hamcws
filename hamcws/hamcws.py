@@ -1,11 +1,14 @@
 """Implementation of a MCWS inteface."""
 import datetime
+import time
 from collections.abc import Sequence
 from enum import Enum, StrEnum
 from typing import Callable, TypeVar, Union
 from xml.etree import ElementTree
 
 from aiohttp import ClientSession, ClientResponseError, BasicAuth, ClientResponse
+
+ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
 
 class MediaServerInfo:
@@ -287,6 +290,8 @@ class MediaServer:
 
     def __init__(self, connection: MediaServerConnection):
         self._conn = connection
+        self._token = None
+        self._token_obtained_at = 0
 
     async def close(self):
         await self._conn.close()
@@ -294,20 +299,33 @@ class MediaServer:
     def make_url(self, path: str) -> str:
         return self._conn.get_url(path)
 
-    def get_file_image_url(self, file_key: int) -> str:
+    async def get_file_image_url(self, file_key: int) -> str:
         """ Get image URL for a file given the key. """
-        params = f'File={file_key}&Type=Thumbnail&ThumbnailSize=Large&Format=png'
+        await self._ensure_token()
+        params = f'File={file_key}&Type=Thumbnail&ThumbnailSize=Large&Format=png&Token={self._token}'
         return f'{self._conn.get_mcws_url("File/GetImage")}?{params}'
+
+    async def _ensure_token(self) -> None:
+        now = time.time()
+        if now - self._token_obtained_at > ONE_DAY_IN_SECONDS:
+            await self.get_auth_token()
+
+    async def get_browse_thumbnail_url(self, base_id: int = -1):
+        """ the image thumbnail for the browse node id """
+        await self._ensure_token()
+        return f'{self._conn.get_mcws_url("Browse/Image")}?UseStackedImages=1&Format=jpg&ID={base_id}&Token={self._token}'
 
     async def alive(self) -> MediaServerInfo:
         """ returns info about the instance, no authentication required. """
         ok, resp = await self._conn.get_as_dict('Alive')
         return MediaServerInfo(resp)
 
-    async def can_authenticate(self) -> bool:
-        """ True if able to authenticate (or if no auth is configured). """
+    async def get_auth_token(self) -> str:
+        """ Get an authenticated token. """
         ok, resp = await self._conn.get_as_dict('Authenticate')
-        return ok
+        self._token = resp['Token']
+        self._token_obtained_at = time.time()
+        return self._token
 
     async def get_zones(self) -> list[Zone]:
         """ all known zones """
@@ -451,17 +469,15 @@ class MediaServer:
 
     async def play_browse_files(self, base_id: int = -1, zone: Zone | None = None, play_next: bool = True):
         """ play the files under the given browse id """
-        ok, resp = await self._conn.get_as_dict('Browse/Files', params={
+        params = {
             'ID': base_id,
             'Action': 'Play',
-            'PlayMode': 'NextToPlay' if play_next else 'Add',
             **self.__zone_params(zone)
-        })
+        }
+        if play_next is not None:
+            params['PlayMode'] = 'NextToPlay' if play_next else 'Add'
+        ok, resp = await self._conn.get_as_dict('Browse/Files', params=params)
         return resp
-
-    def get_browse_thumbnail_url(self, base_id: int = -1):
-        """ the image thumbnail for the browse node id """
-        return f'{self._conn.get_mcws_url("Browse/Image")}?UseStackedImages=1&Format=jpg&ID={base_id}'
 
     async def send_key_presses(self, keys: Sequence[KeyCommand | str], focus: bool = True) -> bool:
         """ send a sequence of key presses """
