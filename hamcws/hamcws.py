@@ -394,12 +394,11 @@ class MediaServer:
         return float(resp['Level'])
 
     async def set_volume_level(self, volume: float, zone: Zone | str | None = None) -> float:
-        """Set volume level, range 0-100."""
+        """Set volume level, range 0-1."""
         if volume < 0:
-            raise ValueError(f'{volume} not in range 0-100')
-        if volume > 100:
-            raise ValueError(f'{volume} not in range 0-100')
-        volume = volume / 100
+            raise ValueError(f'{volume} not in range 0-1')
+        if volume > 1:
+            raise ValueError(f'{volume} not in range 0-1')
         ok, resp = await self._conn.get_as_dict('Playback/Volume', params={'Level': volume, **self.__zone_params(zone)})
         return float(resp['Level'])
 
