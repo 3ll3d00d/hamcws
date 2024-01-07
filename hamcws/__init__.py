@@ -4,6 +4,8 @@ from .hamcws import (
     MediaServerConnection,
     CannotConnectError,
     InvalidAuthError,
+    InvalidRequestError,
+    MediaServerError,
     MediaServerInfo,
     PlaybackInfo,
     Zone,
