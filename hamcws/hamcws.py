@@ -505,8 +505,10 @@ class MediaServer:
 
     async def send_key_presses(self, keys: Sequence[KeyCommand | str], focus: bool = True) -> bool:
         """ send a sequence of key presses """
+        if not keys:
+            raise ValueError('No keys')
         ok, resp = await self._conn.get_as_dict('Command/Key', params={
-            'Key': ';'.join((str(k) for k in keys)),
+            'Key': ';'.join((str(k) if isinstance(k, Enum) else ';'.join(k) for k in keys if k)),
             'Focus': 1 if focus else 0
         })
         return ok

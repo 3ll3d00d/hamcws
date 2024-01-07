@@ -10,5 +10,5 @@ from .hamcws import (
     PlaybackState,
     MediaType,
     MediaSubType,
-    KeyCommand
+    KeyCommand,
 )
