@@ -542,7 +542,7 @@ class MediaServer:
         }
         if param is not None:
             params['Parameter'] = param
-        ok, resp = await self._conn.get_as_dict('Command/MCC', params=params)
+        ok, resp = await self._conn.get_as_dict('Control/MCC', params=params)
         return ok
 
     async def set_active_zone(self, zone: Zone | str) -> bool:
