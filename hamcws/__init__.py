@@ -9,5 +9,6 @@ from .hamcws import (
     Zone,
     PlaybackState,
     MediaType,
-    MediaSubType
+    MediaSubType,
+    KeyCommand
 )
