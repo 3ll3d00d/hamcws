@@ -255,6 +255,10 @@ class MediaServerConnection:
                 except ClientResponseError as e:
                     if e.status == 401:
                         raise InvalidAuthError from e
+                    elif e.status == 400:
+                        raise InvalidRequestError from e
+                    elif e.status == 500:
+                        raise MediaServerError from e
                     else:
                         raise CannotConnectError from e
         except ClientConnectionError as e:
@@ -529,7 +533,7 @@ class MediaServer:
         return ok
 
     async def send_mcc(self, command: int, param: int | None = None, zone: Zone | str | None = None,
-                       block: bool = False) -> bool:
+                       block: bool = True) -> bool:
         """ send the MCC command """
         params = {
             'Command': command,
@@ -563,3 +567,11 @@ class CannotConnectError(Exception):
 
 class InvalidAuthError(Exception):
     """Exception to indicate an error in authentication."""
+
+
+class MediaServerError(Exception):
+    """Exception to indicate a failure internal to the server. """
+
+
+class InvalidRequestError(Exception):
+    """Exception to indicate a malformed request. """
