@@ -6,7 +6,7 @@ from enum import Enum, StrEnum
 from typing import Callable, TypeVar, Union
 from xml.etree import ElementTree
 
-from aiohttp import ClientSession, ClientResponseError, BasicAuth, ClientResponse
+from aiohttp import ClientSession, ClientResponseError, BasicAuth, ClientResponse, ClientConnectionError
 
 ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
@@ -233,17 +233,20 @@ class MediaServerConnection:
 
     async def __get(self, path: str, parser: Callable[[INPUT], tuple[bool, OUTPUT]],
                     reader: Callable[[ClientResponse], INPUT], params: dict | None = None) -> tuple[bool, OUTPUT]:
-        async with self._session.get(self.get_mcws_url(path), params=params, timeout=self._timeout,
-                                     auth=self._auth) as resp:
-            try:
-                resp.raise_for_status()
-                content = await reader(resp)
-                return parser(content)
-            except ClientResponseError as e:
-                if e.status == 401:
-                    raise InvalidAuthError from e
-                else:
-                    raise CannotConnectError from e
+        try:
+            async with self._session.get(self.get_mcws_url(path), params=params, timeout=self._timeout,
+                                         auth=self._auth) as resp:
+                try:
+                    resp.raise_for_status()
+                    content = await reader(resp)
+                    return parser(content)
+                except ClientResponseError as e:
+                    if e.status == 401:
+                        raise InvalidAuthError from e
+                    else:
+                        raise CannotConnectError from e
+        except ClientConnectionError as e:
+            raise CannotConnectError from e
 
     def get_url(self, path: str) -> str:
         return f'{self._host_url}/{path}'
@@ -516,12 +519,14 @@ class MediaServer:
     async def send_mcc(self, command: int, param: int | None = None, zone: Zone | str | None = None,
                        block: bool = False) -> bool:
         """ send the MCC command """
-        ok, resp = await self._conn.get_as_dict('Command/MCC', params={
+        params = {
             'Command': command,
-            'Parameter': param if param else 0,
             'Block': 1 if block else 0,
             **self.__zone_params(zone)
-        })
+        }
+        if param is not None:
+            params['Parameter'] = param
+        ok, resp = await self._conn.get_as_dict('Command/MCC', params=params)
         return ok
 
     async def set_active_zone(self, zone: Zone | str) -> bool:
