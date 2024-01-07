@@ -11,4 +11,5 @@ from .hamcws import (
     MediaType,
     MediaSubType,
     KeyCommand,
+    ViewMode
 )

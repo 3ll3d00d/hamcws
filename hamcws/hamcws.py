@@ -2,7 +2,7 @@
 import datetime
 import time
 from collections.abc import Sequence
-from enum import Enum, StrEnum
+from enum import Enum, StrEnum, IntEnum
 from typing import Callable, TypeVar, Union
 from xml.etree import ElementTree
 
@@ -181,6 +181,18 @@ class KeyCommand(StrEnum):
     SPACE = 'Space'
     PRINT_SCREEN = 'Print Screen'
     TAB = 'Tab'
+
+
+class ViewMode(IntEnum):
+    """ From https://wiki.jriver.com/index.php/Media_Center_Core_Commands UIModes. """
+    UNKNOWN = -2000
+    NO_UI = -1000
+    STANDARD = 0
+    MINI = 1
+    DISPLAY = 2
+    THEATER = 3
+    COVER = 4
+    COUNT = 5
 
 
 INPUT = TypeVar("INPUT", bound=Union[str, dict])
@@ -535,6 +547,14 @@ class MediaServer:
             raise ValueError('zone is required')
         ok, resp = await self._conn.get_as_dict('Playback/SetZone', params=self.__zone_params(zone))
         return ok
+
+    async def get_view_mode(self) -> ViewMode:
+        ok, resp = await self._conn.get_as_dict('UserInterface/Info')
+        # noinspection PyBroadException
+        try:
+            return ViewMode(int(resp['Mode']))
+        except:
+            return ViewMode.UNKNOWN
 
 
 class CannotConnectError(Exception):
