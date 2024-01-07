@@ -350,7 +350,7 @@ class MediaServer:
         """ all known zones """
         ok, resp = await self._conn.get_as_dict("Playback/Zones")
         num_zones = int(resp["NumberZones"])
-        active_zone_id = resp['CurrentZoneID']
+        active_zone_id = int(resp['CurrentZoneID'])
         return [Zone(resp, i, active_zone_id) for i in range(num_zones)]
 
     async def get_playback_info(self, zone: Zone | str | None = None,
