@@ -272,12 +272,22 @@ class MediaServerConnection:
         self._timeout = timeout
         self._auth = BasicAuth(username, password) if username is not None else None
         self._protocol = f'http{"s" if ssl else ""}'
+        self._host = host
+        self._port = port
         self._host_port = f'{host}:{port}'
         self._host_url = f'{self._protocol}://{self._host_port}'
         self._base_url = f"{self._host_url}/MCWS/v1"
 
     @property
-    def host_url(self):
+    def host(self) -> str:
+        return self._host
+
+    @property
+    def port(self) -> str:
+        return self._port
+
+    @property
+    def host_url(self) -> str:
         return self._host_url
 
     async def get_as_dict(self, path: str, params: dict | None = None) -> tuple[bool, dict]:
@@ -347,6 +357,14 @@ class MediaServer:
         self._conn = connection
         self._token = None
         self._token_obtained_at = 0
+
+    @property
+    def host(self) -> str:
+        return self._conn.host
+
+    @property
+    def port(self) -> str:
+        return self._conn.port
 
     async def close(self):
         await self._conn.close()
