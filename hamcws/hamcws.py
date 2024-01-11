@@ -357,6 +357,11 @@ class MediaServer:
         self._conn = connection
         self._token = None
         self._token_obtained_at = 0
+        self._media_server_info: MediaServerInfo | None = None
+
+    @property
+    def media_server_info(self) -> MediaServerInfo | None:
+        return self._media_server_info
 
     @property
     def host(self) -> str:
@@ -391,7 +396,8 @@ class MediaServer:
     async def alive(self) -> MediaServerInfo:
         """ returns info about the instance, no authentication required. """
         ok, resp = await self._conn.get_as_dict('Alive')
-        return MediaServerInfo(resp)
+        self._media_server_info = MediaServerInfo(resp)
+        return self._media_server_info
 
     async def get_auth_token(self) -> str:
         """ Get an authenticated token. """
