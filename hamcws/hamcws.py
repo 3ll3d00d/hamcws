@@ -74,6 +74,18 @@ class PlaybackInfo:
         return val
 
 
+class ServerAddress:
+    def __init__(self, content: dict):
+        self.key_id = content.get('keyid', None)
+        self.ip = content.get('ip', None)
+        self.port = int(content.get('port', -1))
+        self.local_ip_list = content.get('localiplist', '').split(',')
+        self.remote_ip = content.get('ip', None)
+        self.http_port = int(content.get('port', -1))
+        self.https_port = int(content.get('https_port', -1))
+        self.mac_address_list = content.get('macaddresslist', '').split(',')
+
+
 class Zone:
     def __init__(self, content: dict, zone_index: int, active_zone_id: int):
         self.index = zone_index
@@ -222,32 +234,43 @@ class MediaServerConnection:
         self._host_port = f'{host}:{port}'
         self._host_url = f'{self._protocol}://{self._host_port}'
         self._base_url = f"{self._host_url}/MCWS/v1"
+        self._key_lookup_url = 'http://webplay.jriver.com/libraryserver/lookup'
 
     @property
     def host_url(self):
         return self._host_url
 
+    async def get_server_info(self, access_key: str) -> tuple[bool, dict]:
+        """ parses the key lookup XML as a dict where element names are keys and value is Item.text. """
+        def _parse(content: str) -> tuple[bool, dict]:
+            result: dict = {}
+            root = ElementTree.fromstring(content)
+            for child in root:
+                result[child.tag] = child.text
+            return root.attrib['Status'] == 'OK', result
+
+        return await self.__get(self._key_lookup_url, _parse, lambda r: r.text(), {'id': access_key})
+
     async def get_as_dict(self, path: str, params: dict | None = None) -> tuple[bool, dict]:
         """ parses MCWS XML Item list as a dict taken where keys are Item.@name and value is Item.text """
-        return await self.__get(path, _to_dict, lambda r: r.text(), params)
+        return await self.__get(self.get_mcws_url(path), _to_dict, lambda r: r.text(), params)
 
     async def get_as_json_list(self, path: str, params: dict | None = None) -> tuple[bool, list[dict]]:
         """ returns a json response as is (response must supply a list) """
-        return await self.__get(path, lambda d: (True, d), lambda r: r.json(), params)
+        return await self.__get(self.get_mcws_url(path), lambda d: (True, d), lambda r: r.json(), params)
 
     async def get_as_json_dict(self, path: str, params: dict | None = None) -> tuple[bool, dict]:
         """ returns a json response as is (response must supply a dict) """
-        return await self.__get(path, lambda d: (True, d), lambda r: r.json(), params)
+        return await self.__get(self.get_mcws_url(path), lambda d: (True, d), lambda r: r.json(), params)
 
     async def get_as_list(self, path: str, params: dict | None = None) -> tuple[bool, list]:
         """ parses MCWS XML Item list as a list of values taken from the element text """
-        return await self.__get(path, _to_list, lambda r: r.text(), params)
+        return await self.__get(self.get_mcws_url(path), _to_list, lambda r: r.text(), params)
 
-    async def __get(self, path: str, parser: Callable[[INPUT], tuple[bool, OUTPUT]],
+    async def __get(self, url: str, parser: Callable[[INPUT], tuple[bool, OUTPUT]],
                     reader: Callable[[ClientResponse], INPUT], params: dict | None = None) -> tuple[bool, OUTPUT]:
         try:
-            async with self._session.get(self.get_mcws_url(path), params=params, timeout=self._timeout,
-                                         auth=self._auth) as resp:
+            async with self._session.get(url, params=params, timeout=self._timeout, auth=self._auth) as resp:
                 try:
                     resp.raise_for_status()
                     content = await reader(resp)
@@ -333,6 +356,13 @@ class MediaServer:
         """ the image thumbnail for the browse node id """
         await self._ensure_token()
         return f'{self._conn.get_mcws_url("Browse/Image")}?UseStackedImages=1&Format=jpg&ID={base_id}&Token={self._token}'
+
+    async def resolve_access_key(self, access_key: str) -> ServerAddress | None:
+        """ Get server address info from jriver servers. """
+        ok, values = await self._conn.get_server_info(access_key)
+        if not ok:
+            return None
+        return ServerAddress(values)
 
     async def alive(self) -> MediaServerInfo:
         """ returns info about the instance, no authentication required. """
