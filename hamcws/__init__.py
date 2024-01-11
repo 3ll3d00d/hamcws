@@ -14,5 +14,6 @@ from .hamcws import (
     MediaSubType,
     KeyCommand,
     ViewMode,
-    ServerAddress
+    ServerAddress,
+    resolve_access_key
 )
