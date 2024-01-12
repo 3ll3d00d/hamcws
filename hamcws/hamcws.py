@@ -29,7 +29,8 @@ class MediaServerInfo:
 
 
 class PlaybackInfo:
-    def __init__(self, resp_info: dict):
+
+    def __init__(self, resp_info: dict, extra_fields: list[str]):
         self.zone_id = int(resp_info['ZoneID'])
         self.zone_name: str = resp_info['ZoneName']
         self.state: PlaybackState = PlaybackState(int(resp_info['State']))
@@ -50,6 +51,8 @@ class PlaybackInfo:
         self.series: str = resp_info.get('Series', '')
         self.season: str = resp_info.get('Season', '')
         self.episode: str = resp_info.get('Episode', '')
+        # custom fields
+        self.extra_fields = {f: resp_info.get(f, '') for f in extra_fields}
 
         # noinspection PyBroadException
         try:
@@ -66,6 +69,29 @@ class PlaybackInfo:
         if 'Playback Info' in resp_info:
             # TODO parse into a nested dict
             self.playback_info: str = resp_info.get('Playback Info', '')
+
+    def as_dict(self) -> dict:
+        """ converts the available info to a dict. """
+        return {
+            'name': self.name,
+            'zone_id': self.zone_id,
+            'zone_name': self.zone_name,
+            'playback_state': self.state.name,
+            'position_ms': self.position_ms,
+            'duration_ms': self.duration_ms,
+            'volume': self.volume,
+            'muted': self.muted,
+            'live_input': self.live_input,
+            'artist': self.artist,
+            'album': self.album,
+            'album_artist': self.album_artist,
+            'series': self.series,
+            'season': self.season,
+            'episode': self.episode,
+            'media_type': self.media_type.name,
+            'media_sub_type': self.media_sub_type.name,
+            **self.extra_fields
+        }
 
     def __str__(self):
         val = f'[{self.zone_name} : {self.state.name}]'
@@ -419,15 +445,10 @@ class MediaServer:
         params = self.__zone_params(zone)
         if not extra_fields:
             extra_fields = []
-        extra_fields.append('Media Type')
-        extra_fields.append('Media Sub Type')
-        extra_fields.append('Series')
-        extra_fields.append('Season')
-        extra_fields.append('Episode')
-        extra_fields.append('Album Artist (auto)')
-        params['Fields'] = ';'.join(set(extra_fields))
+        default_fields = ['Media Type', 'Media Sub Type', 'Series', 'Season', 'Episode', 'Album Artist (auto)']
+        params['Fields'] = ';'.join(set(extra_fields + default_fields))
         ok, resp = await self._conn.get_as_dict("Playback/Info", params=params)
-        return PlaybackInfo(resp)
+        return PlaybackInfo(resp, extra_fields)
 
     @staticmethod
     def __zone_params(zone: Zone | str | None = None) -> dict:
