@@ -15,5 +15,6 @@ from .hamcws import (
     KeyCommand,
     ViewMode,
     ServerAddress,
-    resolve_access_key
+    resolve_access_key,
+    LibraryField
 )
