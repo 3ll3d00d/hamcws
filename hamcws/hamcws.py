@@ -639,7 +639,7 @@ class MediaServer:
         """ send a sequence of key presses """
         if not keys:
             raise ValueError('No keys')
-        ok, resp = await self._conn.get_as_dict('Command/Key', params={
+        ok, resp = await self._conn.get_as_dict('Control/Key', params={
             'Key': ';'.join((str(k) if isinstance(k, Enum) else ';'.join(k) for k in keys if k)),
             'Focus': 1 if focus else 0
         })
