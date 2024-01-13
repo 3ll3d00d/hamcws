@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from enum import Enum, StrEnum, IntEnum
 from typing import Callable, TypeVar, Union
 from xml.etree import ElementTree
-
+from dataclasses import dataclass
 from aiohttp import ClientSession, ClientResponseError, BasicAuth, ClientResponse, ClientConnectionError
 
 ONE_DAY_IN_SECONDS = 60 * 60 * 24
@@ -233,6 +233,14 @@ class ViewMode(IntEnum):
     COUNT = 5
 
 
+@dataclass
+class LibraryField:
+    name: str
+    data_type: str
+    edit_type: str
+    display_name: str
+
+
 INPUT = TypeVar("INPUT", bound=Union[str, dict])
 OUTPUT = TypeVar("OUTPUT", bound=Union[list, dict])
 
@@ -315,6 +323,13 @@ class MediaServerConnection:
     @property
     def host_url(self) -> str:
         return self._host_url
+
+    async def get(self, path: str, parser: Callable[[INPUT], tuple[bool, OUTPUT]],
+                  reader: Callable[[ClientResponse], INPUT] = lambda r: r.text(),
+                  params: dict | None = None) -> tuple[bool, OUTPUT]:
+        """ Custom parsing of content returned from MCWS. """
+        return await _get(self._session, self.get_mcws_url(path), parser, reader, params, timeout=self._timeout,
+                          auth=self._auth)
 
     async def get_as_dict(self, path: str, params: dict | None = None) -> tuple[bool, dict]:
         """ parses MCWS XML Item list as a dict taken where keys are Item.@name and value is Item.text """
@@ -438,6 +453,24 @@ class MediaServer:
         num_zones = int(resp["NumberZones"])
         active_zone_id = int(resp['CurrentZoneID'])
         return [Zone(resp, i, active_zone_id) for i in range(num_zones)]
+
+    async def get_library_fields(self) -> list[LibraryField]:
+        def _parse(text: str) -> tuple[bool, list[LibraryField]]:
+            result: list[LibraryField] = []
+            root = ElementTree.fromstring(text)
+            is_ok = root.attrib['Status'] == 'OK'
+            if not is_ok or not root:
+                return False, []
+            if root[0].tag == 'Fields':
+                for child in root[0]:
+                    result.append(LibraryField(child.attrib['Name'], child.attrib['DataType'], child.attrib['EditType'],
+                                               child.attrib['DisplayName']))
+            return is_ok, result
+
+        ok, resp = await self._conn.get('Library/Fields', _parse)
+        if ok:
+            return resp
+        return []
 
     async def get_playback_info(self, zone: Zone | str | None = None,
                                 extra_fields: list[str] | None = None) -> PlaybackInfo:
