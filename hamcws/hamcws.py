@@ -520,7 +520,7 @@ class MediaServer:
         """Send (un)mute command."""
         ok, resp = await self._conn.get_as_dict('Playback/Mute',
                                                 params={'Set': '1' if mute else '0', **self.__zone_params(zone)})
-        return ok
+        return bool(int(resp['State']))
 
     async def play_pause(self, zone: Zone | str | None = None) -> bool:
         """Send play/pause command."""
