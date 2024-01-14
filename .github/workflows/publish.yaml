@@ -33,6 +33,14 @@ jobs:
       - name: Install dependencies
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction --no-root
+      - name: pytest
+        run: |
+          source .venv/bin/activate
+          pytest --cov=./hamcws --cov-report=xml
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
       - name: Install project
         run: poetry install --no-interaction
       - name: Generate changelog
