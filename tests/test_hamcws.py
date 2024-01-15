@@ -4,8 +4,8 @@ import pytest
 from aiohttp import web
 from aiohttp.web_response import Response
 
-from hamcws import get_mcws_connection, MediaServer, MediaServerInfo, MediaType, KeyCommand, ViewMode, ServerAddress, \
-    resolve_access_key, Zone, PlaybackState
+from hamcws import get_mcws_connection, MediaServer, MediaServerInfo, MediaType, KeyCommand, ViewMode, PlaybackState, \
+    MediaSubType
 
 
 def make_handler(text: str):
@@ -240,6 +240,26 @@ async def test_playback_info(playback_info_stub):
     assert not info.album_artist
     assert not info.album
     assert not info.artist
+    assert info.as_dict() == {
+        'name': 'Media Center',
+        'zone_id': 10081,
+        'zone_name': 'Player',
+        'playback_state': PlaybackState.STOPPED.name,
+        'position_ms': 0,
+        'duration_ms': 1229000,
+        'volume': 0.44999,
+        'muted': False,
+        'live_input': False,
+        'artist': '',
+        'album': '',
+        'album_artist': '',
+        'series': '',
+        'season': '',
+        'episode': '',
+        'media_type': MediaType.NOT_AVAILABLE.name,
+        'media_sub_type': MediaSubType.NOT_AVAILABLE.name,
+    }
+    assert str(info) == '[Player : STOPPED]'
 
 
 @pytest.fixture
@@ -335,6 +355,7 @@ async def test_ok_commands(ok_stub):
     assert await ok_stub.stop() is True
     assert await ok_stub.next_track() is True
     assert await ok_stub.previous_track() is True
+    assert await ok_stub.stop_all() is True
 
 
 @pytest.fixture
@@ -353,6 +374,7 @@ async def test_fail_commands(fail_stub):
     assert await fail_stub.stop() is False
     assert await fail_stub.next_track() is False
     assert await fail_stub.previous_track() is False
+    assert await fail_stub.stop_all() is True
 
 
 def test_mediaserverinfo_eq():
@@ -387,6 +409,7 @@ def test_mediaserverinfo_eq():
     assert ms1 != ms3
     assert ms1 != ms4
     assert ms1 == ms5
+    assert str(ms1) == 'localhost [31.0.87]'
 
 
 def test_media_type():
@@ -403,3 +426,5 @@ def test_key_command():
 def test_view_mode():
     assert ViewMode.STANDARD > ViewMode.NO_UI
     assert ViewMode.NO_UI < ViewMode.STANDARD
+
+
