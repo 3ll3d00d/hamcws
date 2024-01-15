@@ -14,9 +14,9 @@ ONE_DAY_IN_SECONDS = 60 * 60 * 24
 class MediaServerInfo:
 
     def __init__(self, resp_dict: dict):
-        self.version = resp_dict['ProgramVersion']
-        self.name = resp_dict['FriendlyName']
-        self.platform = resp_dict['Platform']
+        self.version = resp_dict.get('ProgramVersion', 'Unknown')
+        self.name = resp_dict.get('FriendlyName', 'Unknown')
+        self.platform = resp_dict.get('Platform', 'Unknown')
         self.updated_at = datetime.datetime.utcnow()
 
     def __str__(self):
@@ -31,15 +31,15 @@ class MediaServerInfo:
 class PlaybackInfo:
 
     def __init__(self, resp_info: dict, extra_fields: list[str]):
-        self.zone_id = int(resp_info['ZoneID'])
-        self.zone_name: str = resp_info['ZoneName']
-        self.state: PlaybackState = PlaybackState(int(resp_info['State']))
-        self.file_key: int = int(resp_info['FileKey'])
-        self.next_file_key: int = int(resp_info['NextFileKey'])
-        self.position_ms: int = int(resp_info['PositionMS'])
-        self.duration_ms: int = int(resp_info['DurationMS'])
-        self.volume: float = float(resp_info['Volume'])
-        self.muted: bool = resp_info['VolumeDisplay'] == 'Muted'
+        self.zone_id = int(resp_info.get('ZoneID', -1))
+        self.zone_name: str = resp_info.get('ZoneName', '')
+        self.state: PlaybackState = PlaybackState(int(resp_info.get('State', -1)))
+        self.file_key: int = int(resp_info.get('FileKey', -1))
+        self.next_file_key: int = int(resp_info.get('NextFileKey', -1))
+        self.position_ms: int = int(resp_info.get('PositionMS', 0))
+        self.duration_ms: int = int(resp_info.get('DurationMS', 0))
+        self.volume: float = float(resp_info.get('Volume', 0.0))
+        self.muted: bool = resp_info.get('VolumeDisplay', '') == 'Muted'
         self.image_url: str = resp_info.get('ImageURL', '')
         self.name: str = resp_info.get('Name', '')
         self.live_input: bool = self.name == 'Ipc'
@@ -115,10 +115,10 @@ class ServerAddress:
 class Zone:
     def __init__(self, content: dict, zone_index: int, active_zone_id: int):
         self.index = zone_index
-        self.id = int(content[f"ZoneID{self.index}"])
-        self.name = content[f"ZoneName{self.index}"]
-        self.guid = content[f"ZoneGUID{self.index}"]
-        self.is_dlna = True if (content[f"ZoneDLNA{self.index}"] == "1") else False
+        self.id = int(content.get(f"ZoneID{self.index}", -1))
+        self.name = content.get(f"ZoneName{self.index}", '')
+        self.guid = content.get(f"ZoneGUID{self.index}", '')
+        self.is_dlna = True if (content.get(f"ZoneDLNA{self.index}", '0') == "1") else False
         self.active = self.id == active_zone_id
 
     def __identifier(self):
@@ -148,6 +148,7 @@ class Zone:
 
 
 class PlaybackState(Enum):
+    UNKNOWN = -1
     STOPPED = 0
     PAUSED = 1
     PLAYING = 2

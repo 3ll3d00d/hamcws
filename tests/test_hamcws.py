@@ -127,6 +127,34 @@ async def test_zones(zones_stub):
 
 
 @pytest.fixture
+async def no_name_zones_stub(aiohttp_server) -> MediaServer:
+    handler = make_handler('''<Response Status="OK">
+<Item Name="NumberZones">1</Item>
+<Item Name="CurrentZoneID">10081</Item>
+<Item Name="CurrentZoneIndex">0</Item>
+<Item Name="ZoneID0">10081</Item>
+<Item Name="ZoneGUID0">{xxxx-xxxx}</Item>
+<Item Name="ZoneDLNA0">0</Item>
+</Response>''')
+    ms = await make_ms('Playback/Zones', aiohttp_server, handler)
+    yield ms
+    await ms.close()
+
+
+@pytest.mark.asyncio
+async def test_no_name_zones(no_name_zones_stub):
+    zones = await no_name_zones_stub.get_zones()
+    assert zones
+    assert len(zones) == 1
+
+    assert zones[0].index == 0
+    assert zones[0].id == 10081
+    assert zones[0].name == ''
+    assert not zones[0].is_dlna
+    assert zones[0].active
+
+
+@pytest.fixture
 async def library_fields_stub(aiohttp_server) -> MediaServer:
     handler = make_handler('''<Response Status="OK">
 <Fields>
@@ -206,6 +234,33 @@ async def test_playback_info(playback_info_stub):
     assert info.zone_name == 'Player'
     assert info.zone_id == 10081
     assert info.state == PlaybackState.STOPPED
+    assert not info.episode
+    assert not info.season
+    assert not info.series
+    assert not info.album_artist
+    assert not info.album
+    assert not info.artist
+
+
+@pytest.fixture
+async def no_playback_info_stub(aiohttp_server) -> MediaServer:
+    handler = make_handler('''<Response Status="OK"></Response>''')
+    ms = await make_ms('Playback/Info', aiohttp_server, handler)
+    yield ms
+    await ms.close()
+
+
+@pytest.mark.asyncio
+async def test_no_playback_info(no_playback_info_stub):
+    info = await no_playback_info_stub.get_playback_info()
+    assert info
+    assert info.name == ''
+    assert info.position_ms == 0
+    assert info.duration_ms == 0
+    assert info.volume == 0.0
+    assert info.zone_name == ''
+    assert info.zone_id == -1
+    assert info.state == PlaybackState.UNKNOWN
     assert not info.episode
     assert not info.season
     assert not info.series
