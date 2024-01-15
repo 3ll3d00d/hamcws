@@ -374,7 +374,7 @@ async def test_fail_commands(fail_stub):
     assert await fail_stub.stop() is False
     assert await fail_stub.next_track() is False
     assert await fail_stub.previous_track() is False
-    assert await fail_stub.stop_all() is True
+    assert await fail_stub.stop_all() is False
 
 
 def test_mediaserverinfo_eq():
