@@ -17,5 +17,6 @@ from .hamcws import (
     ServerAddress,
     resolve_access_key,
     LibraryField,
-    load_media_server
+    load_media_server,
+    InvalidAccessKeyError
 )
