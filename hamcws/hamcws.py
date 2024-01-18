@@ -1,6 +1,7 @@
 """Implementation of a MCWS inteface."""
 import datetime
 import time
+import logging
 from collections.abc import Sequence
 from enum import Enum, StrEnum, IntEnum
 from typing import Callable, TypeVar, Union
@@ -9,6 +10,8 @@ from dataclasses import dataclass
 from aiohttp import ClientSession, ClientResponseError, BasicAuth, ClientResponse, ClientConnectionError
 
 ONE_DAY_IN_SECONDS = 60 * 60 * 24
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class MediaServerInfo:
@@ -244,25 +247,6 @@ class LibraryField:
 
 INPUT = TypeVar("INPUT", bound=Union[str, dict])
 OUTPUT = TypeVar("OUTPUT", bound=Union[list, dict])
-
-
-async def resolve_access_key(access_key: str, session: ClientSession | None) -> ServerAddress | None:
-    """ Resolve an access key. """
-    close_it = False
-    if session is None:
-        session = ClientSession()
-        close_it = True
-
-    def _parse(content: str) -> tuple[bool, dict]:
-        result: dict = {}
-        root = ElementTree.fromstring(content)
-        for child in root:
-            result[child.tag] = child.text
-        return root.attrib['Status'] == 'OK', result
-
-    ok, values = await _get(session, 'http://webplay.jriver.com/libraryserver/lookup', _parse, lambda r: r.text(),
-                            {'id': access_key})
-    return ServerAddress(values) if ok else None
 
 
 def get_mcws_connection(host: str, port: int, username: str | None = None, password: str | None = None,
@@ -689,3 +673,105 @@ class MediaServerError(Exception):
 
 class InvalidRequestError(Exception):
     """Exception to indicate a malformed request. """
+
+
+class InvalidAccessKeyError(Exception):
+    """Exception to indicate the access key is invalid. """
+
+
+async def try_connect(
+        host: str,
+        port: int,
+        username: str | None,
+        password: str | None,
+        session: ClientSession,
+        ssl: bool = False,
+        timeout: int = 5,
+) -> MediaServer:
+    """Try to connect to the given host/port."""
+    _LOGGER.debug("Connecting to %s:%s", host, port)
+    conn = get_mcws_connection(
+        host,
+        port,
+        username=username,
+        password=password,
+        ssl=ssl,
+        timeout=timeout,
+        session=session,
+    )
+    ms = MediaServer(conn)
+    if not await ms.get_auth_token():
+        raise CannotConnect("Unexpected response")
+    await ms.alive()
+    return ms
+
+
+async def load_media_server(access_key: str | None = None, host: str | None = None, port: int = 0,
+                            username: str | None = None, password: str | None = None, use_ssl: bool = False,
+                            session: ClientSession | None = None, timeout: int = 5) -> tuple[MediaServer, list[str]]:
+    """Use the supplied details to obtain a MediaServer connection."""
+    close_it = False
+    if session is None:
+        session = ClientSession()
+        close_it = True
+
+    try:
+        if access_key:
+            _LOGGER.debug("Looking up access key %s", access_key)
+            server_info: ServerAddress | None = await resolve_access_key(
+                access_key, session
+            )
+            if server_info:
+                for ip in server_info.local_ip_list:
+                    try:
+                        ms = await try_connect(
+                            ip,
+                            server_info.https_port if use_ssl else server_info.http_port,
+                            username,
+                            password,
+                            session,
+                            ssl=use_ssl,
+                            timeout=timeout,
+                        )
+                    except CannotConnectError:
+                        continue
+                    if ms:
+                        _LOGGER.debug(
+                            "Access key %s resolved to %s:%s",
+                            access_key,
+                            ip,
+                            server_info.port,
+                        )
+                        return ms, server_info.mac_address_list
+            else:
+                raise InvalidAccessKeyError()
+        ms = await try_connect(
+            host, port, username, password, session, ssl=use_ssl, timeout=timeout
+        )
+        return ms, []
+    finally:
+        if close_it:
+            session.close()
+
+
+async def resolve_access_key(access_key: str, session: ClientSession | None) -> ServerAddress | None:
+    """ Resolve an access key. """
+    close_it = False
+    if session is None:
+        session = ClientSession()
+        close_it = True
+
+    def _parse(content: str) -> tuple[bool, dict]:
+        result: dict = {}
+        root = ElementTree.fromstring(content)
+        for child in root:
+            result[child.tag] = child.text
+        return root.attrib['Status'] == 'OK', result
+
+    try:
+        ok, values = await _get(session, 'http://webplay.jriver.com/libraryserver/lookup', _parse, lambda r: r.text(),
+                                {'id': access_key})
+        return ServerAddress(values) if ok else None
+    finally:
+        if close_it:
+            session.close()

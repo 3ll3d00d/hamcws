@@ -426,5 +426,3 @@ def test_key_command():
 def test_view_mode():
     assert ViewMode.STANDARD > ViewMode.NO_UI
     assert ViewMode.NO_UI < ViewMode.STANDARD
-
-
