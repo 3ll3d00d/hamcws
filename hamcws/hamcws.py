@@ -245,6 +245,19 @@ class LibraryField:
     display_name: str
 
 
+@dataclass(order=True)
+class BrowseRule:
+    name: str
+    categories: str
+    search: str
+
+    def get_names(self) -> list[str]:
+        return [n for n in self.name.split('\\') if n]
+
+    def get_categories(self) -> list[str]:
+        return [c for c in self.categories.split('\\') if c]
+
+
 INPUT = TypeVar("INPUT", bound=Union[str, dict])
 OUTPUT = TypeVar("OUTPUT", bound=Union[list, dict])
 
@@ -270,7 +283,12 @@ async def _get(session: ClientSession, url: str, parser: Callable[[INPUT], tuple
                 elif e.status == 400:
                     raise InvalidRequestError from e
                 elif e.status == 500:
-                    raise MediaServerError from e
+                    t = resp.text()
+                    import re
+                    if re.fullmatch(r'<Response Status="Failure" Information="Function \'.*\' not found."/>', t):
+                        raise UnsupportedRequestError from e
+                    else:
+                        raise MediaServerError from e
                 else:
                     raise CannotConnectError from e
     except ClientConnectionError as e:
@@ -651,12 +669,30 @@ class MediaServer:
         return ok
 
     async def get_view_mode(self) -> ViewMode:
+        """ Get the current UI mode. """
         ok, resp = await self._conn.get_as_dict('UserInterface/Info')
         # noinspection PyBroadException
         try:
             return ViewMode(int(resp['Mode']))
         except:
             return ViewMode.UNKNOWN
+
+    async def get_browse_rules(self) -> list[BrowseRule]:
+        """ Get the configured BrowseRule list. Only supported from 32.0.6 onwards. """
+        def _parse(text: str) -> tuple[bool, list[BrowseRule]]:
+            result: list[BrowseRule] = []
+            root = ElementTree.fromstring(text)
+            is_ok = root.attrib['Status'] == 'OK'
+            if not is_ok or not root:
+                return False, []
+            for child in root:
+                result.append(BrowseRule(child.attrib['Name'], child.attrib['Categories'], child.attrib['Search']))
+            return is_ok, result
+        try:
+            ok, resp = await self._conn.get('Browse/Rules', _parse)
+            return resp
+        except UnsupportedRequestError:
+            return []
 
 
 class CannotConnectError(Exception):
@@ -677,6 +713,10 @@ class InvalidRequestError(Exception):
 
 class InvalidAccessKeyError(Exception):
     """Exception to indicate the access key is invalid. """
+
+
+class UnsupportedRequestError(MediaServerError):
+    """ Exception to indicate a request for an MCWS function not supported by the server. """
 
 
 async def try_connect(

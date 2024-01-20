@@ -5,7 +5,7 @@ from aiohttp import web
 from aiohttp.web_response import Response
 
 from hamcws import get_mcws_connection, MediaServer, MediaServerInfo, MediaType, KeyCommand, ViewMode, PlaybackState, \
-    MediaSubType
+    MediaSubType, BrowseRule
 
 
 def make_handler(text: str):
@@ -15,6 +15,7 @@ def make_handler(text: str):
             content_type='text/xml',
             charset='utf-8'
         )
+
     return handler
 
 
@@ -375,6 +376,63 @@ async def test_fail_commands(fail_stub):
     assert await fail_stub.next_track() is False
     assert await fail_stub.previous_track() is False
     assert await fail_stub.stop_all() is False
+
+
+@pytest.fixture
+async def unknown_stub(aiohttp_server) -> MediaServer:
+    handler = make_handler('<Response Status="Failure" Information="Function \'Browse/test\' not found."/>')
+    ms = await make_ms('{tail:.*}', aiohttp_server, handler)
+    yield ms
+    await ms.close()
+
+
+@pytest.mark.asyncio
+async def test_unsupported_command(fail_stub):
+    assert await fail_stub.get_browse_rules() == []
+
+
+@pytest.fixture
+async def browse_rules_stub(aiohttp_server) -> MediaServer:
+    handler = make_handler('''<Response Status="OK">
+<Item Name="Images\Album" Categories="Album" Search=""/>
+<Item Name="Audio\Genre" Categories="Genre\Album Artist (auto)\Album" Search=""/>
+<Item Name="Audio\Highly Rated" Categories="" Search="[Rating]=>=4"/>
+</Response>''')
+    ms = await make_ms('Browse/Rules', aiohttp_server, handler)
+    yield ms
+    await ms.close()
+
+
+@pytest.mark.asyncio
+async def test_browse_rules(browse_rules_stub):
+    expected: list[BrowseRule] = [
+        BrowseRule("Images\Album", "Album", ""),
+        BrowseRule("Audio\Genre", "Genre\Album Artist (auto)\Album", ""),
+        BrowseRule("Audio\Highly Rated", "", "[Rating]=>=4"),
+    ]
+    assert await browse_rules_stub.get_browse_rules() == expected
+    br = BrowseRule("Images\Album", "Album", "")
+    assert br.get_names() == ['Images', 'Album']
+    assert br.get_categories() == ['Album']
+    assert not br.search
+    br = BrowseRule("Images\Album", "", "")
+    assert br.get_names() == ['Images', 'Album']
+    assert br.get_categories() == []
+    assert not br.search
+    br = BrowseRule("", "Images\Album", "")
+    assert br.get_names() == []
+    assert br.get_categories() == ['Images', 'Album']
+    assert not br.search
+    br = BrowseRule("", "Images\Album", "[go]")
+    assert br.get_names() == []
+    assert br.get_categories() == ['Images', 'Album']
+    assert br.search == '[go]'
+
+    assert sorted(expected) == [
+        BrowseRule("Audio\Genre", "Genre\Album Artist (auto)\Album", ""),
+        BrowseRule("Audio\Highly Rated", "", "[Rating]=>=4"),
+        BrowseRule("Images\Album", "Album", ""),
+    ]
 
 
 def test_mediaserverinfo_eq():
