@@ -17,6 +17,7 @@ from .hamcws import (
     ServerAddress,
     ViewMode,
     Zone,
+    convert_browse_rules,
     get_mcws_connection,
     load_media_server,
     resolve_access_key,

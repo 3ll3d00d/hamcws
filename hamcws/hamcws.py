@@ -1,4 +1,6 @@
 """Implementation of a MCWS inteface."""
+from __future__ import annotations
+
 import datetime
 import time
 import logging
@@ -6,7 +8,7 @@ from collections.abc import Sequence
 from enum import Enum, StrEnum, IntEnum
 from typing import Callable, TypeVar, Union
 from xml.etree import ElementTree
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from aiohttp import ClientSession, ClientResponseError, BasicAuth, ClientResponse, ClientConnectionError
 
 ONE_DAY_IN_SECONDS = 60 * 60 * 24
@@ -256,6 +258,20 @@ class BrowseRule:
 
     def get_categories(self) -> list[str]:
         return [c for c in self.categories.split('\\') if c]
+
+
+@dataclass
+class BrowsePath:
+    name: str
+    is_field: bool = False
+    parent: BrowsePath | None = None
+    children: list[BrowsePath] = field(default_factory=list)
+    media_types: list[MediaType] = field(default_factory=list)
+    media_sub_types: list[MediaSubType] = field(default_factory=list)
+
+    @property
+    def full_path(self) -> str:
+        return f'{self.parent.full_path}/{self.name}' if self.parent else self.name
 
 
 INPUT = TypeVar("INPUT", bound=Union[str, dict])
@@ -679,6 +695,7 @@ class MediaServer:
 
     async def get_browse_rules(self) -> list[BrowseRule]:
         """ Get the configured BrowseRule list. Only supported from 32.0.6 onwards. """
+
         def _parse(text: str) -> tuple[bool, list[BrowseRule]]:
             result: list[BrowseRule] = []
             root = ElementTree.fromstring(text)
@@ -688,6 +705,7 @@ class MediaServer:
             for child in root:
                 result.append(BrowseRule(child.attrib['Name'], child.attrib['Categories'], child.attrib['Search']))
             return is_ok, result
+
         try:
             ok, resp = await self._conn.get('Browse/Rules', _parse)
             return resp
@@ -815,3 +833,59 @@ async def resolve_access_key(access_key: str, session: ClientSession | None) -> 
     finally:
         if close_it:
             session.close()
+
+
+def _parse_search(search: str) -> tuple[list[MediaType], list[MediaSubType]]:
+    """Attempt to find MediaType and MediaSubType from the search query. """
+    mt: list[MediaType] = []
+    mst: list[MediaSubType] = []
+    if '[Media Type]=' in search:
+        def _safe_parse(t: str) -> MediaType | None:
+            try:
+                return MediaType(t[1:t.index(']')])
+            except:
+                return None
+
+        mt = [_safe_parse(t) for t in search.split('[Media Type]=')[1].split(',')]
+
+    if '[Media Sub Type]=' in search:
+        def _safe_parse(t: str) -> MediaSubType | None:
+            try:
+                return MediaSubType(t[1:t.index(']')])
+            except:
+                return None
+
+        mst = [_safe_parse(t) for t in search.split('[Media Sub Type]=')[1].split(',')]
+
+    return [m for m in mt if m], [m for m in mst if m]
+
+
+def convert_browse_rules(rules: list[BrowseRule], flat: bool = False) -> list[BrowsePath]:
+    """ Convert the rules into a tree of paths. """
+    paths: list[BrowsePath] = []
+    all_paths: list[BrowsePath] = []
+    sorted_rules = sorted(rules, key=lambda r: (r.name, len(r.get_names()), len(r.get_categories())))
+    for rule in sorted_rules:
+        tokens = rule.get_names()
+        mt, mst = _parse_search(rule.search)
+        path = BrowsePath(tokens[-1])
+        path.media_types = mt
+        path.media_sub_types = mst
+        if len(tokens) == 1:
+            paths.append(path)
+            all_paths.append(path)
+        else:
+            target_path = '/'.join(tokens[:-1])
+            parent = next((p for p in all_paths if p.full_path == target_path), None)
+            if parent:
+                parent.children.append(path)
+                all_paths.append(path)
+                path.parent = parent
+        if rule.categories:
+            for category in rule.get_categories():
+                parent = path
+                path = BrowsePath(category, True)
+                path.parent = parent
+                parent.children.append(path)
+
+    return all_paths if flat else paths

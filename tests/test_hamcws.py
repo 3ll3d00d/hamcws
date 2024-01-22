@@ -5,7 +5,7 @@ from aiohttp import web
 from aiohttp.web_response import Response
 
 from hamcws import get_mcws_connection, MediaServer, MediaServerInfo, MediaType, KeyCommand, ViewMode, PlaybackState, \
-    MediaSubType, BrowseRule
+    MediaSubType, BrowseRule, convert_browse_rules
 
 
 def make_handler(text: str):
@@ -484,3 +484,140 @@ def test_key_command():
 def test_view_mode():
     assert ViewMode.STANDARD > ViewMode.NO_UI
     assert ViewMode.NO_UI < ViewMode.STANDARD
+
+
+@pytest.fixture
+async def many_browse_rules_stub(aiohttp_server) -> MediaServer:
+    handler = make_handler('''<Response Status="OK">
+<Item Name="Images\Album" Categories="Album" Search=""/>
+<Item Name="Audio\Genre" Categories="Genre\Album Artist (auto)\Album" Search=""/>
+<Item Name="Audio\Highly Rated" Categories="" Search="[Rating]=&gt;=4"/>
+<Item Name="Audio\Recent" Categories="Album" Search="~sort="/>
+<Item Name="Audio\Highly Rated\Recent Albums" Categories="Album" Search=""/>
+<Item Name="Images\Highly Rated" Categories="" Search="[Rating]=&gt;=4"/>
+<Item Name="Video\Recent" Categories="" Search="~sort=[Date Imported]-d ~n=250"/>
+<Item Name="Images" Categories="" Search="[Media Type]=[Image]"/>
+<Item Name="Audio\Artist" Categories="Album Artist (auto)\Album" Search=""/>
+<Item Name="Images\Keyword" Categories="Keywords" Search=""/>
+<Item Name="Video\Movies" Categories="" Search="[Media Sub Type]=[Movie] ~sort=[Name]"/>
+<Item Name="Audiobooks\Books" Categories="Album" Search=""/>
+<Item Name="Audiobooks\Authors" Categories="Artist\Album" Search=""/>
+<Item Name="Video\Shows" Categories="Series\Season" Search="[Media Sub Type]=[TV Show] -[Episode]=[] -[Genre]=&quot;Family&quot; ~sort=[Series],[Season],[Episode]"/>
+<Item Name="Video" Categories="" Search="[Media Type]=[Video]"/>
+<Item Name="Audio" Categories="" Search="[Media Type]=[Audio]"/>
+<Item Name="Video\Music" Categories="Artist\Album" Search="[Media Type]=[Video] [Media Sub Type]=[Music]"/>
+<Item Name="Images\Disk" Categories="Location" Search=""/>
+<Item Name="Video\Home Videos" Categories="Year" Search="[Media Sub Type]=[Home Video] ~sort=[Date Imported]-d"/>
+<Item Name="Video\Disk" Categories="Location" Search=""/>
+<Item Name="Radio" Categories="Publisher" Search="[Media Sub Type]=[Radio] ~sort=[Publisher],[Name]"/>
+<Item Name="Audiobooks" Categories="" Search="[Media Type]=[Audio] [Genre]=[Audiobook]"/>
+<Item Name="Audio\Podcast" Categories="" Search="[Media Sub Type]=[Podcast] ~sort=[Date]-d"/>
+<Item Name="Images\Camera" Categories="Camera" Search=""/>
+<Item Name="Video\Movies - Unwatched" Categories="Who\Length" Search="[Media Sub Type]=[Movie] [=Or(Compare([Last played,0],=,0),Compare([Rewatch],=,1))]=1 ~sort=[Who],[Duration]"/>
+<Item Name="Video\Other" Categories="" Search="-[Media Sub Type]=[Home Video],[Movie],[TV Show]"/>
+<Item Name="Images\Year" Categories="Year\Album" Search=""/>
+<Item Name="Audio\Composer" Categories="Composer\Album" Search=""/>
+<Item Name="Audio\Album" Categories="Album" Search=""/>
+</Response>''')
+    ms = await make_ms('Browse/Rules', aiohttp_server, handler)
+    yield ms
+    await ms.close()
+
+
+@pytest.mark.asyncio
+async def test_parse_browse_rules(many_browse_rules_stub):
+    rules = await many_browse_rules_stub.get_browse_rules()
+    assert len(rules) == 29
+    paths = convert_browse_rules(rules)
+    assert len(paths) == 5
+    for path in paths:
+        assert path.name in ['Audio', 'Images', 'Video', 'Audiobooks', 'Radio', 'TV Show']
+        if path.name == 'Audio':
+            assert path.media_types == [MediaType.AUDIO]
+            assert not path.media_sub_types
+            assert len(path.children) == 7
+            for c in path.children:
+                assert not c.is_field
+                assert c.parent == path
+
+            assert path.children[0].name == 'Album'
+            assert len(path.children[0].children) == 1
+            assert path.children[0].children[0].name == 'Album'
+            assert path.children[0].children[0].is_field
+            assert not path.children[0].children[0].media_types
+            assert not path.children[0].children[0].media_sub_types
+
+            assert path.children[1].name == 'Artist'
+            assert len(path.children[1].children) == 1
+            assert path.children[1].children[0].name == 'Album Artist (auto)'
+            assert path.children[1].children[0].is_field
+            assert not path.children[1].children[0].media_types
+            assert not path.children[1].children[0].media_sub_types
+            assert len(path.children[1].children[0].children) == 1
+            assert path.children[1].children[0].children[0].name == 'Album'
+            assert path.children[1].children[0].children[0].is_field
+            assert not path.children[1].children[0].children[0].media_types
+            assert not path.children[1].children[0].children[0].media_sub_types
+            assert not path.children[1].children[0].children[0].children
+
+            assert path.children[2].name == 'Composer'
+            assert path.children[3].name == 'Genre'
+
+            assert path.children[4].name == 'Highly Rated'
+            assert len(path.children[4].children) == 1
+            assert path.children[4].children[0].name == 'Recent Albums'
+            assert not path.children[4].children[0].is_field
+            assert not path.children[4].children[0].media_types
+            assert not path.children[4].children[0].media_sub_types
+            assert path.children[4].children[0].children
+            assert len(path.children[4].children[0].children) == 1
+            assert path.children[4].children[0].children[0].name == 'Album'
+            assert path.children[4].children[0].children[0].is_field
+            assert not path.children[4].children[0].children[0].media_types
+            assert not path.children[4].children[0].children[0].media_sub_types
+            assert not path.children[4].children[0].children[0].children
+
+            assert path.children[5].name == 'Podcast'
+            assert path.children[6].name == 'Recent'
+
+        elif path.name == 'Video':
+            assert len(path.children) == 8
+        elif path.name == 'Audiobooks':
+            assert len(path.children) == 2
+        elif path.name == 'Radio':
+            assert len(path.children) == 1
+        elif path.name == 'Images':
+            assert len(path.children) == 6
+
+    paths = [x.full_path for x in convert_browse_rules(rules, flat=True)]
+    assert paths == [
+        'Audio',
+        'Audio/Album',
+        'Audio/Artist',
+        'Audio/Composer',
+        'Audio/Genre',
+        'Audio/Highly Rated',
+        'Audio/Highly Rated/Recent Albums',
+        'Audio/Podcast',
+        'Audio/Recent',
+        'Audiobooks',
+        'Audiobooks/Authors',
+        'Audiobooks/Books',
+        'Images',
+        'Images/Album',
+        'Images/Camera',
+        'Images/Disk',
+        'Images/Highly Rated',
+        'Images/Keyword',
+        'Images/Year',
+        'Radio',
+        'Video',
+        'Video/Disk',
+        'Video/Home Videos',
+        'Video/Movies',
+        'Video/Movies - Unwatched',
+        'Video/Music',
+        'Video/Other',
+        'Video/Recent',
+        'Video/Shows'
+    ]
