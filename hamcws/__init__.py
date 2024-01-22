@@ -1,4 +1,5 @@
 from .hamcws import (
+    BrowsePath,
     BrowseRule,
     CannotConnectError,
     InvalidAccessKeyError,
