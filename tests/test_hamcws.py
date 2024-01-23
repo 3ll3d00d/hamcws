@@ -641,7 +641,7 @@ def test_parse_browse_rules_from_text():
     images = _require('Images')
     assert not images.parent
     assert not images.children
-    assert not images.media_types
+    assert images.media_types == [MediaType.IMAGE]
     assert not images.media_sub_types
 
     radio = _require('Radio')
@@ -655,22 +655,33 @@ def test_parse_browse_rules_from_text():
 
     video = _require('Video')
     assert not video.parent
+    assert video.media_types == [MediaType.VIDEO]
+    assert not video.media_sub_types
     assert len(video.children) == 3
+
     assert video.children[0].name == 'Movies'
+    assert not video.children[0].media_types
+    assert video.children[0].media_sub_types == [MediaSubType.MOVIE]
     assert not video.children[0].children
     assert video.children[0].parent == video
-    assert not video.media_types
-    assert not video.media_sub_types
+
     assert video.children[1].name == 'Music'
     assert video.children[1].parent == video
+    assert not video.children[1].media_types
+    assert video.children[1].media_sub_types == [MediaSubType.MUSIC_VIDEO]
+
     assert video.children[1].children[0].name == 'Artist'
     assert video.children[1].children[0].is_field
     assert video.children[1].children[0].parent == video.children[1]
     assert video.children[1].children[0].children[0].name == 'Album'
     assert video.children[1].children[0].children[0].parent == video.children[1].children[0]
     assert video.children[1].children[0].children[0].is_field
+
     assert video.children[2].name == 'Shows'
     assert video.children[2].parent == video
+    assert not video.children[2].media_types
+    assert video.children[2].media_sub_types == [MediaSubType.TV_SHOW]
+
     assert video.children[2].children[0].name == 'Series'
     assert video.children[2].children[0].is_field
     assert video.children[2].children[0].parent == video.children[2]

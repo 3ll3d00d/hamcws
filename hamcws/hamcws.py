@@ -273,6 +273,14 @@ class BrowsePath:
     def full_path(self) -> str:
         return f'{self.parent.full_path}/{self.name}' if self.parent else self.name
 
+    @property
+    def descendents(self) -> list[BrowsePath]:
+        descendents = []
+        for child in self.children:
+            descendents.append(child)
+            descendents += child.descendents
+        return descendents
+
 
 INPUT = TypeVar("INPUT", bound=Union[str, dict])
 OUTPUT = TypeVar("OUTPUT", bound=Union[list, dict])
@@ -905,5 +913,34 @@ def parse_browse_paths_from_text(input_rules: list[str]) -> list[BrowsePath]:
                 browse_rules.append(match)
             if idx == len(names) - 1 and len(vals) > 1:
                 match.categories = '\\'.join(vals[1].split(','))
+    return _infer_media_types(convert_browse_rules(browse_rules))
 
-    return convert_browse_rules(browse_rules)
+
+def _infer_media_types(paths: list[BrowsePath]) -> list[BrowsePath]:
+    for path in paths:
+        if path.name == 'Audio':
+            path.media_types = [MediaType.AUDIO]
+            for descendant in path.descendents:
+                if descendant.name == 'Podcasts':
+                    descendant.media_sub_types = [MediaSubType.PODCAST]
+                elif descendant.name in ['Album', 'Artist', 'Composer']:
+                    descendant.media_sub_types = [MediaSubType.MUSIC]
+                elif descendant.name in ['Audiobooks']:
+                    descendant.media_sub_types = [MediaSubType.AUDIOBOOK]
+        elif path.name == 'Images':
+            path.media_types = [MediaType.IMAGE]
+        elif path.name == 'Video':
+            path.media_types = [MediaType.VIDEO]
+            for descendant in path.descendents:
+                if descendant.name.startswith('Movies'):
+                    descendant.media_sub_types = [MediaSubType.MOVIE]
+                elif descendant.name == 'Shows':
+                    descendant.media_sub_types = [MediaSubType.TV_SHOW]
+                elif descendant.name == 'Music':
+                    descendant.media_sub_types = [MediaSubType.MUSIC_VIDEO]
+        elif path.name == 'Playlists':
+            path.media_types = [MediaType.PLAYLIST]
+        elif path.name == 'Audiobooks':
+            path.media_types = [MediaType.AUDIO]
+            path.media_sub_types = [MediaSubType.AUDIOBOOK]
+    return paths
