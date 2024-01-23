@@ -889,3 +889,21 @@ def convert_browse_rules(rules: list[BrowseRule], flat: bool = False) -> list[Br
                 parent.children.append(path)
 
     return all_paths if flat else paths
+
+
+def parse_browse_paths_from_text(input_rules: list[str]) -> list[BrowsePath]:
+    """Convert user provided strings to BrowsePaths via a convertion to BrowseRule."""
+    browse_rules: list[BrowseRule] = []
+    for input_rule in input_rules:
+        vals = input_rule.split('|', 2)
+        names = vals[0].split(',')
+        for idx, name in enumerate(names):
+            full_name = '\\'.join(names[0: idx+1])
+            match = next((rule for rule in browse_rules if rule.name == full_name), None)
+            if not match:
+                match = BrowseRule(full_name, "", "")
+                browse_rules.append(match)
+            if idx == len(names) - 1 and len(vals) > 1:
+                match.categories = '\\'.join(vals[1].split(','))
+
+    return convert_browse_rules(browse_rules)

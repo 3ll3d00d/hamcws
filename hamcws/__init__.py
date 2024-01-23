@@ -21,5 +21,6 @@ from .hamcws import (
     convert_browse_rules,
     get_mcws_connection,
     load_media_server,
+    parse_browse_paths_from_text,
     resolve_access_key,
 )

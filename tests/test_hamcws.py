@@ -5,7 +5,7 @@ from aiohttp import web
 from aiohttp.web_response import Response
 
 from hamcws import get_mcws_connection, MediaServer, MediaServerInfo, MediaType, KeyCommand, ViewMode, PlaybackState, \
-    MediaSubType, BrowseRule, convert_browse_rules
+    MediaSubType, BrowseRule, convert_browse_rules, parse_browse_paths_from_text
 
 
 def make_handler(text: str):
@@ -621,3 +621,59 @@ async def test_parse_browse_rules(many_browse_rules_stub):
         'Video/Recent',
         'Video/Shows'
     ]
+
+
+def test_parse_browse_rules_from_text():
+    input_rules = [
+        "Images",
+        "Radio,Channels",
+        "Video,Shows|Series,Season",
+        "Video,Movies",
+        "Video,Music|Artist,Album",
+    ]
+    paths = parse_browse_paths_from_text(input_rules)
+    assert paths
+    assert len(paths) == 3
+
+    def _require(n: str):
+        return next(p for p in paths if p.name == n)
+
+    images = _require('Images')
+    assert not images.parent
+    assert not images.children
+    assert not images.media_types
+    assert not images.media_sub_types
+
+    radio = _require('Radio')
+    assert not radio.parent
+    assert len(radio.children) == 1
+    assert radio.children[0].name == 'Channels'
+    assert not radio.children[0].children
+    assert radio.children[0].parent == radio
+    assert not radio.media_types
+    assert not radio.media_sub_types
+
+    video = _require('Video')
+    assert not video.parent
+    assert len(video.children) == 3
+    assert video.children[0].name == 'Movies'
+    assert not video.children[0].children
+    assert video.children[0].parent == video
+    assert not video.media_types
+    assert not video.media_sub_types
+    assert video.children[1].name == 'Music'
+    assert video.children[1].parent == video
+    assert video.children[1].children[0].name == 'Artist'
+    assert video.children[1].children[0].is_field
+    assert video.children[1].children[0].parent == video.children[1]
+    assert video.children[1].children[0].children[0].name == 'Album'
+    assert video.children[1].children[0].children[0].parent == video.children[1].children[0]
+    assert video.children[1].children[0].children[0].is_field
+    assert video.children[2].name == 'Shows'
+    assert video.children[2].parent == video
+    assert video.children[2].children[0].name == 'Series'
+    assert video.children[2].children[0].is_field
+    assert video.children[2].children[0].parent == video.children[2]
+    assert video.children[2].children[0].children[0].name == 'Season'
+    assert video.children[2].children[0].children[0].parent == video.children[2].children[0]
+    assert video.children[2].children[0].children[0].is_field
