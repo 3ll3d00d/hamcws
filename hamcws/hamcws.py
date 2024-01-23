@@ -693,8 +693,8 @@ class MediaServer:
         except:
             return ViewMode.UNKNOWN
 
-    async def get_browse_rules(self) -> list[BrowseRule]:
-        """ Get the configured BrowseRule list. Only supported from 32.0.6 onwards. """
+    async def get_browse_rules(self, view_type: str = 'Tree') -> list[BrowseRule]:
+        """ Get the configured BrowseRule list. Only supported from 32.0.6 onwards. view_type is only honoured from 32.0.7 onwards."""
 
         def _parse(text: str) -> tuple[bool, list[BrowseRule]]:
             result: list[BrowseRule] = []
@@ -707,7 +707,7 @@ class MediaServer:
             return is_ok, result
 
         try:
-            ok, resp = await self._conn.get('Browse/Rules', _parse)
+            ok, resp = await self._conn.get('Browse/Rules', _parse, params={'Type': view_type})
             return resp
         except UnsupportedRequestError:
             return []
