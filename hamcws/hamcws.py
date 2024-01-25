@@ -701,7 +701,7 @@ class MediaServer:
         except:
             return ViewMode.UNKNOWN
 
-    async def get_browse_rules(self, view_type: str = 'Tree') -> list[BrowseRule]:
+    async def get_browse_rules(self, view_type: str = 'Remote') -> list[BrowseRule]:
         """ Get the configured BrowseRule list. Only supported from 32.0.6 onwards. view_type is only honoured from 32.0.7 onwards."""
 
         def _parse(text: str) -> tuple[bool, list[BrowseRule]]:
