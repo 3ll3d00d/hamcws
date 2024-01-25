@@ -533,8 +533,8 @@ async def test_parse_browse_rules(many_browse_rules_stub):
     for path in paths:
         assert path.name in ['Audio', 'Images', 'Video', 'Audiobooks', 'Radio', 'TV Show']
         if path.name == 'Audio':
-            assert path.media_types == [MediaType.AUDIO]
-            assert not path.media_sub_types
+            assert path.effective_media_types == [MediaType.AUDIO]
+            assert not path.effective_media_sub_types
             assert len(path.children) == 7
             for c in path.children:
                 assert not c.is_field
@@ -544,20 +544,20 @@ async def test_parse_browse_rules(many_browse_rules_stub):
             assert len(path.children[0].children) == 1
             assert path.children[0].children[0].name == 'Album'
             assert path.children[0].children[0].is_field
-            assert not path.children[0].children[0].media_types
-            assert path.children[0].children[0].media_sub_types == [MediaSubType.MUSIC]
+            assert path.children[0].children[0].effective_media_types == [MediaType.AUDIO]
+            assert path.children[0].children[0].effective_media_sub_types == [MediaSubType.MUSIC]
 
             assert path.children[1].name == 'Artist'
             assert len(path.children[1].children) == 1
             assert path.children[1].children[0].name == 'Album Artist (auto)'
             assert path.children[1].children[0].is_field
-            assert not path.children[1].children[0].media_types
-            assert not path.children[1].children[0].media_sub_types
+            assert path.children[1].children[0].effective_media_types == [MediaType.AUDIO]
+            assert path.children[1].children[0].effective_media_sub_types == [MediaSubType.MUSIC]
             assert len(path.children[1].children[0].children) == 1
             assert path.children[1].children[0].children[0].name == 'Album'
             assert path.children[1].children[0].children[0].is_field
-            assert not path.children[1].children[0].children[0].media_types
-            assert path.children[1].children[0].children[0].media_sub_types == [MediaSubType.MUSIC]
+            assert path.children[1].children[0].children[0].effective_media_types == [MediaType.AUDIO]
+            assert path.children[1].children[0].children[0].effective_media_sub_types == [MediaSubType.MUSIC]
             assert not path.children[1].children[0].children[0].children
 
             assert path.children[2].name == 'Composer'
@@ -567,14 +567,14 @@ async def test_parse_browse_rules(many_browse_rules_stub):
             assert len(path.children[4].children) == 1
             assert path.children[4].children[0].name == 'Recent Albums'
             assert not path.children[4].children[0].is_field
-            assert not path.children[4].children[0].media_types
-            assert not path.children[4].children[0].media_sub_types
+            assert path.children[4].children[0].effective_media_types == [MediaType.AUDIO]
+            assert not path.children[4].children[0].effective_media_sub_types
             assert path.children[4].children[0].children
             assert len(path.children[4].children[0].children) == 1
             assert path.children[4].children[0].children[0].name == 'Album'
             assert path.children[4].children[0].children[0].is_field
-            assert not path.children[4].children[0].children[0].media_types
-            assert path.children[4].children[0].children[0].media_sub_types == [MediaSubType.MUSIC]
+            assert path.children[4].children[0].children[0].effective_media_types == [MediaType.AUDIO]
+            assert path.children[4].children[0].children[0].effective_media_sub_types == [MediaSubType.MUSIC]
             assert not path.children[4].children[0].children[0].children
 
             assert path.children[5].name == 'Podcast'
@@ -641,8 +641,8 @@ def test_parse_browse_rules_from_text():
     images = _require('Images')
     assert not images.parent
     assert not images.children
-    assert images.media_types == [MediaType.IMAGE]
-    assert not images.media_sub_types
+    assert images.effective_media_types == [MediaType.IMAGE]
+    assert not images.effective_media_sub_types
 
     radio = _require('Radio')
     assert not radio.parent
@@ -650,25 +650,25 @@ def test_parse_browse_rules_from_text():
     assert radio.children[0].name == 'Channels'
     assert not radio.children[0].children
     assert radio.children[0].parent == radio
-    assert not radio.media_types
-    assert not radio.media_sub_types
+    assert not radio.effective_media_types
+    assert not radio.effective_media_sub_types
 
     video = _require('Video')
     assert not video.parent
-    assert video.media_types == [MediaType.VIDEO]
-    assert not video.media_sub_types
+    assert video.effective_media_types == [MediaType.VIDEO]
+    assert not video.effective_media_sub_types
     assert len(video.children) == 3
 
     assert video.children[0].name == 'Movies'
-    assert not video.children[0].media_types
-    assert video.children[0].media_sub_types == [MediaSubType.MOVIE]
+    assert video.children[0].effective_media_types == [MediaType.VIDEO]
+    assert video.children[0].effective_media_sub_types == [MediaSubType.MOVIE]
     assert not video.children[0].children
     assert video.children[0].parent == video
 
     assert video.children[1].name == 'Music'
     assert video.children[1].parent == video
-    assert not video.children[1].media_types
-    assert video.children[1].media_sub_types == [MediaSubType.MUSIC_VIDEO]
+    assert video.children[1].effective_media_types == [MediaType.VIDEO]
+    assert video.children[1].effective_media_sub_types == [MediaSubType.MUSIC_VIDEO]
 
     assert video.children[1].children[0].name == 'Artist'
     assert video.children[1].children[0].is_field
@@ -676,18 +676,24 @@ def test_parse_browse_rules_from_text():
     assert video.children[1].children[0].children[0].name == 'Album'
     assert video.children[1].children[0].children[0].parent == video.children[1].children[0]
     assert video.children[1].children[0].children[0].is_field
+    assert video.children[1].children[0].children[0].effective_media_types == [MediaType.VIDEO]
+    assert video.children[1].children[0].children[0].effective_media_sub_types == [MediaSubType.MUSIC_VIDEO]
 
     assert video.children[2].name == 'Shows'
     assert video.children[2].parent == video
-    assert not video.children[2].media_types
-    assert video.children[2].media_sub_types == [MediaSubType.TV_SHOW]
+    assert video.children[2].effective_media_types == [MediaType.VIDEO]
+    assert video.children[2].effective_media_sub_types == [MediaSubType.TV_SHOW]
 
     assert video.children[2].children[0].name == 'Series'
     assert video.children[2].children[0].is_field
     assert video.children[2].children[0].parent == video.children[2]
+    assert video.children[2].children[0].effective_media_types == [MediaType.VIDEO]
+    assert video.children[2].children[0].effective_media_sub_types == [MediaSubType.TV_SHOW]
     assert video.children[2].children[0].children[0].name == 'Season'
     assert video.children[2].children[0].children[0].parent == video.children[2].children[0]
     assert video.children[2].children[0].children[0].is_field
+    assert video.children[2].children[0].children[0].effective_media_types == [MediaType.VIDEO]
+    assert video.children[2].children[0].children[0].effective_media_sub_types == [MediaSubType.TV_SHOW]
 
 
 def test_search_for_path():

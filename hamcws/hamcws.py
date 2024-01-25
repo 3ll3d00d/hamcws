@@ -281,6 +281,22 @@ class BrowsePath:
             descendents += child.descendents
         return descendents
 
+    @property
+    def effective_media_types(self) -> list[MediaType]:
+        if self.media_types:
+            return self.media_types
+        if self.parent:
+            return self.parent.effective_media_types
+        return []
+
+    @property
+    def effective_media_sub_types(self) -> list[MediaSubType]:
+        if self.media_sub_types:
+            return self.media_sub_types
+        if self.parent:
+            return self.parent.effective_media_sub_types
+        return []
+
 
 INPUT = TypeVar("INPUT", bound=Union[str, dict])
 OUTPUT = TypeVar("OUTPUT", bound=Union[list, dict])
