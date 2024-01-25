@@ -23,4 +23,5 @@ from .hamcws import (
     load_media_server,
     parse_browse_paths_from_text,
     resolve_access_key,
+    search_for_path,
 )

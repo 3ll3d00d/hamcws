@@ -5,7 +5,7 @@ from aiohttp import web
 from aiohttp.web_response import Response
 
 from hamcws import get_mcws_connection, MediaServer, MediaServerInfo, MediaType, KeyCommand, ViewMode, PlaybackState, \
-    MediaSubType, BrowseRule, convert_browse_rules, parse_browse_paths_from_text
+    MediaSubType, BrowseRule, convert_browse_rules, parse_browse_paths_from_text, search_for_path
 
 
 def make_handler(text: str):
@@ -688,3 +688,43 @@ def test_parse_browse_rules_from_text():
     assert video.children[2].children[0].children[0].name == 'Season'
     assert video.children[2].children[0].children[0].parent == video.children[2].children[0]
     assert video.children[2].children[0].children[0].is_field
+
+
+def test_search_for_path():
+    input_rules = [
+        "Images",
+        "Radio,Channels",
+        "Video,Shows|Series,Season",
+        "Video,Movies",
+        "Video,Music|Artist,Album",
+    ]
+    paths = parse_browse_paths_from_text(input_rules)
+
+    result = search_for_path(paths, ['Images'])
+    assert result.full_path == 'Images'
+
+    result = search_for_path(paths, ['My', 'Images'])
+    assert not result
+
+    result = search_for_path(paths, ['Radio', 'Channels'])
+    assert result.full_path == 'Radio/Channels'
+
+    result = search_for_path(paths, ['Radio', 'Stations'])
+    assert not result
+
+    result = search_for_path(paths, ['Video'])
+    assert result.full_path == 'Video'
+
+    result = search_for_path(paths, ['Video', 'Shows'])
+    assert result.full_path == 'Video/Shows'
+
+    result = search_for_path(paths, ['Video', 'Shows', 'Series'])
+    assert result.full_path == 'Video/Shows/Series'
+
+    result = search_for_path(paths, ['Video', 'Shows', 'Series', 'Season'])
+    assert result.full_path == 'Video/Shows/Series/Season'
+
+    result = search_for_path(paths, ['Video', 'Shows', 'Series', 'Season', 'Episodes'])
+    assert not result
+
+

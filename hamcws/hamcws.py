@@ -944,3 +944,20 @@ def _infer_media_types(paths: list[BrowsePath]) -> list[BrowsePath]:
             path.media_types = [MediaType.AUDIO]
             path.media_sub_types = [MediaSubType.AUDIOBOOK]
     return paths
+
+
+def search_for_path(paths: list[BrowsePath], target_path: list[str]) -> BrowsePath | None:
+    """ Search the paths for the target. """
+    if not target_path:
+        return None
+
+    def _search(level: int, search_paths: list[BrowsePath] | None) -> BrowsePath | None:
+        if not search_paths:
+            return None
+        for path in search_paths:
+            if path.name == target_path[level]:
+                if len(target_path) == level + 1:
+                    return path
+                return _search(level + 1, path.children)
+
+    return _search(0, paths)
