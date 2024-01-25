@@ -545,7 +545,7 @@ async def test_parse_browse_rules(many_browse_rules_stub):
             assert path.children[0].children[0].name == 'Album'
             assert path.children[0].children[0].is_field
             assert not path.children[0].children[0].media_types
-            assert not path.children[0].children[0].media_sub_types
+            assert path.children[0].children[0].media_sub_types == [MediaSubType.MUSIC]
 
             assert path.children[1].name == 'Artist'
             assert len(path.children[1].children) == 1
@@ -557,7 +557,7 @@ async def test_parse_browse_rules(many_browse_rules_stub):
             assert path.children[1].children[0].children[0].name == 'Album'
             assert path.children[1].children[0].children[0].is_field
             assert not path.children[1].children[0].children[0].media_types
-            assert not path.children[1].children[0].children[0].media_sub_types
+            assert path.children[1].children[0].children[0].media_sub_types == [MediaSubType.MUSIC]
             assert not path.children[1].children[0].children[0].children
 
             assert path.children[2].name == 'Composer'
@@ -574,7 +574,7 @@ async def test_parse_browse_rules(many_browse_rules_stub):
             assert path.children[4].children[0].children[0].name == 'Album'
             assert path.children[4].children[0].children[0].is_field
             assert not path.children[4].children[0].children[0].media_types
-            assert not path.children[4].children[0].children[0].media_sub_types
+            assert path.children[4].children[0].children[0].media_sub_types == [MediaSubType.MUSIC]
             assert not path.children[4].children[0].children[0].children
 
             assert path.children[5].name == 'Podcast'
