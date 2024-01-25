@@ -726,5 +726,3 @@ def test_search_for_path():
 
     result = search_for_path(paths, ['Video', 'Shows', 'Series', 'Season', 'Episodes'])
     assert not result
-
-

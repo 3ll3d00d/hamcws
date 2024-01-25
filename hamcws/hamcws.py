@@ -868,7 +868,7 @@ def _parse_search(search: str) -> tuple[list[MediaType], list[MediaSubType]]:
     return [m for m in mt if m], [m for m in mst if m]
 
 
-def convert_browse_rules(rules: list[BrowseRule], flat: bool = False) -> list[BrowsePath]:
+def convert_browse_rules(rules: list[BrowseRule], flat: bool = False, infer_media_types: bool = True) -> list[BrowsePath]:
     """ Convert the rules into a tree of paths. """
     paths: list[BrowsePath] = []
     all_paths: list[BrowsePath] = []
@@ -896,6 +896,8 @@ def convert_browse_rules(rules: list[BrowseRule], flat: bool = False) -> list[Br
                 path.parent = parent
                 parent.children.append(path)
 
+    if infer_media_types is True:
+        _infer_media_types(paths)
     return all_paths if flat else paths
 
 
@@ -913,7 +915,7 @@ def parse_browse_paths_from_text(input_rules: list[str]) -> list[BrowsePath]:
                 browse_rules.append(match)
             if idx == len(names) - 1 and len(vals) > 1:
                 match.categories = '\\'.join(vals[1].split(','))
-    return _infer_media_types(convert_browse_rules(browse_rules))
+    return convert_browse_rules(browse_rules)
 
 
 def _infer_media_types(paths: list[BrowsePath]) -> list[BrowsePath]:
