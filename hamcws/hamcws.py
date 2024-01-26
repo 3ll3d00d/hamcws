@@ -965,7 +965,9 @@ def _infer_media_types(paths: list[BrowsePath]) -> list[BrowsePath]:
 
 
 def search_for_path(paths: list[BrowsePath], target_path: list[str]) -> BrowsePath | None:
-    """ Search the paths for the target. """
+    """
+    Search the BrowsePath identified by the specified path provided a list of individual node names.
+    Only non field tags are examined. """
     if not target_path:
         return None
 
@@ -973,9 +975,14 @@ def search_for_path(paths: list[BrowsePath], target_path: list[str]) -> BrowsePa
         if not search_paths:
             return None
         for path in search_paths:
+            if path.is_field:
+                continue
             if path.name == target_path[level]:
                 if len(target_path) == level + 1:
                     return path
+                if path.descendents and all(c.is_field for c in path.descendents):
+                    if len(path.descendents) + level + 1 >= len(target_path):
+                        return path
                 return _search(level + 1, path.children)
 
     return _search(0, paths)

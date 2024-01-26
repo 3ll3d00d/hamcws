@@ -724,11 +724,11 @@ def test_search_for_path():
     result = search_for_path(paths, ['Video', 'Shows'])
     assert result.full_path == 'Video/Shows'
 
-    result = search_for_path(paths, ['Video', 'Shows', 'Series'])
-    assert result.full_path == 'Video/Shows/Series'
+    result = search_for_path(paths, ['Video', 'Shows', 'The Wire'])
+    assert result.full_path == 'Video/Shows'
 
-    result = search_for_path(paths, ['Video', 'Shows', 'Series', 'Season'])
-    assert result.full_path == 'Video/Shows/Series/Season'
+    result = search_for_path(paths, ['Video', 'Shows', 'The Wire', '2'])
+    assert result.full_path == 'Video/Shows'
 
     result = search_for_path(paths, ['Video', 'Shows', 'Series', 'Season', 'Episodes'])
     assert not result
