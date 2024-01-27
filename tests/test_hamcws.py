@@ -703,6 +703,8 @@ def test_search_for_path():
         "Video,Shows|Series,Season",
         "Video,Movies",
         "Video,Music|Artist,Album",
+        "Audiobooks,Books|Album",
+        "Audiobooks,Authors|Artist,Album"
     ]
     paths = parse_browse_paths_from_text(input_rules)
 
@@ -725,10 +727,25 @@ def test_search_for_path():
     assert result.full_path == 'Video/Shows'
 
     result = search_for_path(paths, ['Video', 'Shows', 'The Wire'])
-    assert result.full_path == 'Video/Shows'
+    assert result.full_path == 'Video/Shows/Series'
 
     result = search_for_path(paths, ['Video', 'Shows', 'The Wire', '2'])
-    assert result.full_path == 'Video/Shows'
+    assert result.full_path == 'Video/Shows/Series/Season'
 
     result = search_for_path(paths, ['Video', 'Shows', 'Series', 'Season', 'Episodes'])
     assert not result
+
+    result = search_for_path(paths, ['Audiobooks'])
+    assert result.full_path == 'Audiobooks'
+
+    result = search_for_path(paths, ['Audiobooks', 'Books'])
+    assert result.full_path == 'Audiobooks/Books'
+
+    result = search_for_path(paths, ['Audiobooks', 'Books', 'My Book'])
+    assert result.full_path == 'Audiobooks/Books/Album'
+
+    result = search_for_path(paths, ['Audiobooks', 'Authors'])
+    assert result.full_path == 'Audiobooks/Authors'
+
+    result = search_for_path(paths, ['Audiobooks', 'Authors', 'Me'])
+    assert result.full_path == 'Audiobooks/Authors/Artist'

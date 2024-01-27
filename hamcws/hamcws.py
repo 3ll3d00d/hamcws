@@ -977,12 +977,12 @@ def search_for_path(paths: list[BrowsePath], target_path: list[str]) -> BrowsePa
         for path in search_paths:
             if path.is_field:
                 continue
-            if path.name == target_path[level]:
-                if len(target_path) == level + 1:
+            if path.name == target_path[level - 1]:
+                if len(target_path) == level:
                     return path
                 if path.descendents and all(c.is_field for c in path.descendents):
-                    if len(path.descendents) + level + 1 >= len(target_path):
-                        return path
+                    if len(path.descendents) + level >= len(target_path):
+                        return path.descendents[len(target_path[level:]) - 1]
                 return _search(level + 1, path.children)
 
-    return _search(0, paths)
+    return _search(1, paths)
