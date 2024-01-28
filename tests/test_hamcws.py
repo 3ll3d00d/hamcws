@@ -21,7 +21,14 @@ def make_handler(text: str):
 
 async def make_ms(func: str, aiohttp_server, handler, prefix: str = 'MCWS/v1/'):
     app = web.Application()
-    app.add_routes([web.get(f"/{prefix}{func}", handler)])
+    routes = [web.get(f"/{prefix}{func}", handler)]
+    if func != 'Authenticate':
+        routes.append(web.get(f"/{prefix}Authenticate", make_handler('''<Response Status="OK">
+<Item Name="Token">1234567</Item>
+<Item Name="ReadOnly">0</Item>
+<Item Name="PreLicensed">0</Item>
+</Response>''')))
+    app.add_routes(routes)
     server = await aiohttp_server(app)
     return MediaServer(get_mcws_connection('localhost', server.port))
 
@@ -235,6 +242,7 @@ async def test_playback_info(playback_info_stub):
     assert info.zone_name == 'Player'
     assert info.zone_id == 10081
     assert info.state == PlaybackState.STOPPED
+    assert info.image_url.endswith('MCWS/v1/File/GetImage?File=4294967295&Token=1234567')
     assert not info.episode
     assert not info.season
     assert not info.series
