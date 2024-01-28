@@ -524,7 +524,12 @@ class MediaServer:
         default_fields = ['Media Type', 'Media Sub Type', 'Series', 'Season', 'Episode', 'Album Artist (auto)']
         params['Fields'] = ';'.join(set(extra_fields + default_fields))
         ok, resp = await self._conn.get_as_dict("Playback/Info", params=params)
-        return PlaybackInfo(resp, extra_fields)
+        info = PlaybackInfo(resp, extra_fields)
+        if info.image_url:
+            await self._ensure_token()
+            if self._token:
+                info.image_url = f'{info.image_url}&Token={self._token}'
+        return info
 
     @staticmethod
     def __zone_params(zone: Zone | str | None = None) -> dict:
