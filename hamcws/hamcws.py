@@ -613,7 +613,8 @@ class MediaServer:
         return ok
 
     async def play_item(self, item: str, zone: Zone | str | None = None) -> bool:
-        ok, resp = await self._conn.get_as_dict('Playback/PlayByKey', params={'Key': item, **self.__zone_params(zone)})
+        ok, resp = await self._conn.get_as_dict('File/GetInfo',
+                                                params={'Key': item, 'Action': 'Play', **self.__zone_params(zone)})
         return ok
 
     async def play_playlist(self, playlist_id: str, playlist_type: str = 'Path',
