@@ -323,7 +323,8 @@ async def _get(session: ClientSession, url: str, parser: Callable[[INPUT], tuple
                 elif e.status == 400:
                     raise InvalidRequestError from e
                 elif e.status == 500:
-                    t = resp.text()
+                    # TODO resp is closed by this point, move this out of the error block
+                    t = await resp.text()
                     import re
                     if re.fullmatch(r'<Response Status="Failure" Information="Function \'.*\' not found."/>', t):
                         raise UnsupportedRequestError from e
@@ -614,7 +615,7 @@ class MediaServer:
 
     async def play_item(self, item: str, zone: Zone | str | None = None) -> bool:
         ok, resp = await self._conn.get_as_dict('File/GetInfo',
-                                                params={'Key': item, 'Action': 'Play', **self.__zone_params(zone)})
+                                                params={'File': item, 'Action': 'Play', **self.__zone_params(zone)})
         return ok
 
     async def play_playlist(self, playlist_id: str, playlist_type: str = 'Path',
