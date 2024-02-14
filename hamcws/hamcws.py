@@ -747,8 +747,7 @@ class MediaServer:
             return is_ok, result
 
         try:
-            # ok, resp = await self._conn.get('Browse/Rules', _parse, params={'Type': view_type})
-            ok, resp = await self._conn.get('Playlist/Files', _parse, params={'playlistType': 'ID', 'Playlist': '-1', 'Action': 'serialize'})
+            ok, resp = await self._conn.get('Browse/Rules', _parse, params={'Type': view_type})
             return resp
         except UnsupportedRequestError:
             return []
