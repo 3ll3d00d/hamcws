@@ -314,26 +314,35 @@ async def _get(session: ClientSession, url: str, parser: Callable[[INPUT], tuple
     try:
         async with session.get(url, params=params, timeout=timeout, auth=auth) as resp:
             try:
+                err_text = ''
+                if resp.status == 500:
+                    try:
+                        err_text = await resp.text()
+                    except:
+                        pass
                 resp.raise_for_status()
                 content = await reader(resp)
                 return parser(content)
             except ClientResponseError as e:
                 if e.status == 401:
-                    raise InvalidAuthError from e
+                    raise InvalidAuthError(url) from e
                 elif e.status == 400:
-                    raise InvalidRequestError from e
+                    raise InvalidRequestError(url) from e
                 elif e.status == 500:
-                    # TODO resp is closed by this point, move this out of the error block
-                    t = await resp.text()
                     import re
-                    if re.fullmatch(r'<Response Status="Failure" Information="Function \'.*\' not found."/>', t):
-                        raise UnsupportedRequestError from e
+                    m = re.search(r'.*<Response Status="Failure" Information="(.*)"/>.*', err_text, flags=re.MULTILINE)
+                    if m:
+                        err_text = m.group(1)
+                        if re.search(r'Function \'.*\' not found', err_text):
+                            raise UnsupportedRequestError(url) from e
+                        else:
+                            raise MediaServerError(f'{url} - {err_text}') from e
                     else:
-                        raise MediaServerError from e
+                        raise MediaServerError(f'{url} produces {err_text}') from e
                 else:
-                    raise CannotConnectError from e
+                    raise CannotConnectError(f'{e.message} - {url}') from e
     except ClientConnectionError as e:
-        raise CannotConnectError from e
+        raise CannotConnectError(str(e)) from e
 
 
 class MediaServerConnection:
@@ -738,7 +747,8 @@ class MediaServer:
             return is_ok, result
 
         try:
-            ok, resp = await self._conn.get('Browse/Rules', _parse, params={'Type': view_type})
+            # ok, resp = await self._conn.get('Browse/Rules', _parse, params={'Type': view_type})
+            ok, resp = await self._conn.get('Playlist/Files', _parse, params={'playlistType': 'ID', 'Playlist': '-1', 'Action': 'serialize'})
             return resp
         except UnsupportedRequestError:
             return []
