@@ -5,14 +5,14 @@ from aiohttp import web
 from aiohttp.web_response import Response
 
 from hamcws import get_mcws_connection, MediaServer, MediaServerInfo, MediaType, KeyCommand, ViewMode, PlaybackState, \
-    MediaSubType, BrowseRule, convert_browse_rules, parse_browse_paths_from_text, search_for_path
+    MediaSubType, BrowseRule, convert_browse_rules, parse_browse_paths_from_text, search_for_path, AudioPath
 
 
-def make_handler(text: str):
+def make_handler(text: str, ctype: str = 'text/xml'):
     async def handler(request: web.Request) -> web.Response:
         return Response(
             text=text,
-            content_type='text/xml',
+            content_type=ctype,
             charset='utf-8'
         )
 
@@ -757,3 +757,77 @@ def test_search_for_path():
 
     result = search_for_path(paths, ['Audiobooks', 'Authors', 'Me'])
     assert result.full_path == 'Audiobooks/Authors/Artist'
+
+
+@pytest.fixture
+async def ap_direct_stub(aiohttp_server) -> MediaServer:
+    handler = make_handler('''<Response Status="OK">
+<Item Name="AudioPath">No changes are being made</Item>
+<Item Name="Direct">yes</Item>
+<Item Name="AudioPath0">No changes are being made</Item>
+</Response>''')
+    ms = await make_ms('Playback/AudioPath', aiohttp_server, handler)
+    yield ms
+    await ms.close()
+
+
+@pytest.mark.asyncio
+async def test_audio_path_direct(ap_direct_stub: MediaServer):
+    resp = await ap_direct_stub.get_audio_path()
+    assert resp
+    assert isinstance(resp, AudioPath)
+    assert resp.is_direct is True
+    assert resp.paths == ['No changes are being made']
+
+
+@pytest.fixture
+async def ap_dsp_stub(aiohttp_server) -> MediaServer:
+    handler = make_handler('''<Response Status="OK">
+<Item Name="AudioPath">Convert from 2 channels to 2 channels (in 6 channel container);--------------;Copy Left to U1;Add Right to U1;Add Centre to U1;Add SL to U1;Add SR to U1;Low-pass at 120 Hz (U1);Low-pass at 120 Hz (U1);Low-pass at 120 Hz (U1);Low-pass at 120 Hz (U1);--------------;Copy Sub to U2;High-pass at 120 Hz (U2);High-pass at 120 Hz (U2);High-pass at 120 Hz (U2);High-pass at 120 Hz (U2);Low-pass at 120 Hz (Sub);Low-pass at 120 Hz (Sub);Low-pass at 120 Hz (Sub);Low-pass at 120 Hz (Sub);Add U2 to Sub;Add U1 to Sub;--------------;High-pass at 120 Hz (Left,Right,Centre,SL,SR);High-pass at 120 Hz (Left,Right,Centre,SL,SR);High-pass at 120 Hz (Left,Right,Centre,SL,SR);High-pass at 120 Hz (Left,Right,Centre,SL,SR)</Item>
+<Item Name="Direct">no</Item>
+<Item Name="AudioPath0">Convert from 2 channels to 2 channels (in 6 channel container)</Item>
+<Item Name="AudioPath1">--------------</Item>
+<Item Name="AudioPath2">Copy Left to U1</Item>
+<Item Name="AudioPath3">Add Right to U1</Item>
+<Item Name="AudioPath4">Add Centre to U1</Item>
+<Item Name="AudioPath5">Add SL to U1</Item>
+<Item Name="AudioPath6">Add SR to U1</Item>
+</Response>''')
+    ms = await make_ms('Playback/AudioPath', aiohttp_server, handler)
+    yield ms
+    await ms.close()
+
+
+@pytest.mark.asyncio
+async def test_audio_path_dsp(ap_dsp_stub: MediaServer):
+    resp = await ap_dsp_stub.get_audio_path()
+    assert resp
+    assert isinstance(resp, AudioPath)
+    assert resp.is_direct is False
+    assert resp.paths == [
+        'Convert from 2 channels to 2 channels (in 6 channel container)',
+        '--------------',
+        'Copy Left to U1',
+        'Add Right to U1',
+        'Add Centre to U1',
+        'Add SL to U1',
+        'Add SR to U1'
+    ]
+
+
+@pytest.fixture
+async def playlist_stub(aiohttp_server) -> MediaServer:
+    handler = make_handler('[{"Key": 1866769,"Filename":"Z:/JPEGMAFIA_x_Danny_Brown/SCARING_THE_HOES/01-Lean_Beef_Patty.flac","Name": "Lean Beef Patty","Artist": "JPEGMAFIA x Danny Brown","Album": "SCARING THE HOES","Genre": "Hip-Hop","Comment": "Visit https://jpegmafia.bandcamp.com","Date (readable)": "2023","Date": 44927,"Bitrate": 1752,"Image File": "INTERNAL","Duration": 107.586666699999995,"Track #": 1,"Media Type": "Audio","Album Artist": "JPEGMAFIA x Danny Brown","Bookmark": "92879","Date Imported": 1719697095,"Last Played": 1728975965,"Number Plays": 3,"File Type": "flac","File Size": 23891407,"Date Created": 1719696278,"Date Modified": 1720102351,"Compression": "FLAC","Peak Level (R128)": "+0.0 dBTP;+0.0 Left;-0.2 Right","Peak Level (Sample)": "-0.5 dB;-0.5 Left;-0.5 Right","BPM": 62,"Volume Level (R128)": -17.969289779663086,"Volume Level (ReplayGain)": -12.969289779663086,"Dynamic Range (R128)": 5.8563899993896484,"Dynamic Range (DR)": 2,"Sample Rate": 44100,"Channels": 2,"Bit Depth": 24,"Length In PCM Blocks": 4744572,"Total Tracks": 14,"Total Discs": 1,"Date Tagged": 1719697138,"Date Last Opened": 1728975960,"HDCD": "0","Zone Last Opened": "Player","Audio CRC": "0x7DCC0E83","Last Played (album)": 1728975965},{"Key": 1866770,"Filename": "Z:/JPEGMAFIA_x_Danny_Brown/SCARING_THE_HOES/02-Steppa_Pig.flac","Name": "Steppa Pig","Artist": "JPEGMAFIA x Danny Brown","Album": "SCARING THE HOES","Genre": "Hip-Hop","Comment": "Visit https://jpegmafia.bandcamp.com","Date (readable)": "2023","Date": 44927,"Bitrate": 1773,"Image File": "INTERNAL","Duration": 207.878775499999989,"Track #": 2,"Media Type": "Audio","Album Artist": "JPEGMAFIA x Danny Brown","Date Imported": 1719697095,"Last Played": 1728975576,"Number Plays": 2,"File Type": "flac","File Size": 46404155,"Date Created": 1719696279,"Date Modified": 1720102351,"Compression": "FLAC","Peak Level (R128)": "+0.3 dBTP;+0.3 Left;+0.0 Right","Peak Level (Sample)": "-0.5 dB;-0.5 Left;-0.5 Right","BPM": 98,"Volume Level (R128)": -18.7555007934570312,"Volume Level (ReplayGain)": -13.7554998397827148,"Dynamic Range (R128)": 3.8003299236297607,"Dynamic Range (DR)": 2,"Sample Rate": 44100,"Channels": 2,"Bit Depth": 24,"Length In PCM Blocks": 9167454,"Total Tracks": 14,"Date Tagged": 1719697147,"Date Last Opened": 1728975567,"HDCD": "0","Zone Last Opened": "Player","Audio CRC": "0xC0ED4149","Last Played (album)": 1728975965}]',
+                           ctype='application/json')
+    ms = await make_ms('Playback/Playlist', aiohttp_server, handler)
+    yield ms
+    await ms.close()
+
+
+@pytest.mark.asyncio
+async def test_current_playlist(playlist_stub: MediaServer):
+    resp = await playlist_stub.get_current_playlist()
+    assert resp
+    assert len(resp) == 2
+    assert isinstance(resp[0], dict)
+    assert isinstance(resp[1], dict)

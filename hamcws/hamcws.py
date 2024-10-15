@@ -298,6 +298,12 @@ class BrowsePath:
         return []
 
 
+@dataclass
+class AudioPath:
+    is_direct: bool = False
+    paths: list[str] = field(default_factory=list)
+
+
 INPUT = TypeVar("INPUT", bound=Union[str, dict])
 OUTPUT = TypeVar("OUTPUT", bound=Union[list, dict])
 
@@ -635,6 +641,12 @@ class MediaServer:
                                                         **self.__zone_params(zone)})
         return ok
 
+    async def get_current_playlist(self, zone: Zone | str | None = None) -> list[dict]:
+        """ Get the current playlist."""
+        ok, resp = await self._conn.get_as_json_list('Playback/Playlist',
+                                                     params={'Action': 'JSON', **self.__zone_params(zone)})
+        return resp
+
     async def play_file(self, file: str, zone: Zone | str | None = None) -> bool:
         """Play the given file."""
         ok, resp = await self._conn.get_as_dict('Playback/PlayByFilename',
@@ -751,6 +763,27 @@ class MediaServer:
             return resp
         except UnsupportedRequestError:
             return []
+
+    async def get_audio_path(self, zone: Zone | str | None = None) -> AudioPath:
+        """ Get the audio path of the given zone. """
+        def _parse(text: str) -> tuple[bool, AudioPath]:
+            root = ElementTree.fromstring(text)
+            is_ok = root.attrib['Status'] == 'OK'
+            if not is_ok or not root:
+                return False, AudioPath()
+            paths = []
+            direct = False
+            for child in root:
+                if child.attrib['Name'] == 'AudioPath':
+                    continue
+                if child.attrib['Name'] == 'Direct':
+                    direct = child.text == 'yes'
+                if child.attrib['Name'].startswith('AudioPath'):
+                    paths.append(child.text)
+            return is_ok, AudioPath(direct, paths)
+
+        ok, resp = await self._conn.get('Playback/AudioPath', _parse, params=self.__zone_params(zone))
+        return resp
 
 
 class CannotConnectError(Exception):

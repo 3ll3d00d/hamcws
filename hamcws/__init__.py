@@ -1,4 +1,5 @@
 from .hamcws import (
+    AudioPath,
     BrowsePath,
     BrowseRule,
     CannotConnectError,
