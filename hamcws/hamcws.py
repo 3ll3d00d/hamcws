@@ -641,10 +641,15 @@ class MediaServer:
                                                         **self.__zone_params(zone)})
         return ok
 
-    async def get_current_playlist(self, zone: Zone | str | None = None) -> list[dict]:
+    async def get_current_playlist(self, fields: list[str] | None = None, zone: Zone | str | None = None) -> list[dict]:
         """ Get the current playlist."""
+        if not fields:
+            fields = ['Key', 'Name', 'Media Type', 'Media Sub Type', 'Series', 'Season', 'Episode', 'Artist', 'Album', 'Track #',
+                      'Dimensions', 'HDR Format', 'Duration']
         ok, resp = await self._conn.get_as_json_list('Playback/Playlist',
-                                                     params={'Action': 'JSON', **self.__zone_params(zone)})
+                                                     params={'Fields': ','.join(fields),
+                                                             'Action': 'JSON',
+                                                             **self.__zone_params(zone)})
         return resp
 
     async def play_file(self, file: str, zone: Zone | str | None = None) -> bool:
@@ -675,7 +680,7 @@ class MediaServer:
         """ get the files under the given browse id """
         field_list = ','.join(
             ['Key', 'Name', 'Media Type', 'Media Sub Type', 'Series', 'Season', 'Episode', 'Artist', 'Album', 'Track #',
-             'Dimensions', 'HDR Format'] + (fields if fields else []))
+             'Dimensions', 'HDR Format', 'Duration'] + (fields if fields else []))
         ok, resp = await self._conn.get_as_json_list('Browse/Files',
                                                      params={'ID': base_id, 'Action': 'JSON', 'Fields': field_list})
         return resp
