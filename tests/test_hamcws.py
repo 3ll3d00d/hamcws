@@ -781,6 +781,25 @@ async def test_audio_path_direct(ap_direct_stub: MediaServer):
 
 
 @pytest.fixture
+async def is_direct_stub(aiohttp_server) -> MediaServer:
+    handler = make_handler('''<Response Status="OK">
+<Item Name="Direct">yes</Item>
+</Response>''')
+    ms = await make_ms('Playback/AudioPathDirect', aiohttp_server, handler)
+    yield ms
+    await ms.close()
+
+
+@pytest.mark.asyncio
+async def test_is_direct(is_direct_stub: MediaServer):
+    resp = await is_direct_stub.get_audio_path_direct()
+    assert resp
+    assert isinstance(resp, AudioPath)
+    assert resp.is_direct is True
+    assert not resp.paths
+
+
+@pytest.fixture
 async def ap_dsp_stub(aiohttp_server) -> MediaServer:
     handler = make_handler('''<Response Status="OK">
 <Item Name="AudioPath">Convert from 2 channels to 2 channels (in 6 channel container);--------------;Copy Left to U1;Add Right to U1;Add Centre to U1;Add SL to U1;Add SR to U1;Low-pass at 120 Hz (U1);Low-pass at 120 Hz (U1);Low-pass at 120 Hz (U1);Low-pass at 120 Hz (U1);--------------;Copy Sub to U2;High-pass at 120 Hz (U2);High-pass at 120 Hz (U2);High-pass at 120 Hz (U2);High-pass at 120 Hz (U2);Low-pass at 120 Hz (Sub);Low-pass at 120 Hz (Sub);Low-pass at 120 Hz (Sub);Low-pass at 120 Hz (Sub);Add U2 to Sub;Add U1 to Sub;--------------;High-pass at 120 Hz (Left,Right,Centre,SL,SR);High-pass at 120 Hz (Left,Right,Centre,SL,SR);High-pass at 120 Hz (Left,Right,Centre,SL,SR);High-pass at 120 Hz (Left,Right,Centre,SL,SR)</Item>

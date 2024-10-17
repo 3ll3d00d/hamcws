@@ -769,6 +769,23 @@ class MediaServer:
         except UnsupportedRequestError:
             return []
 
+    async def get_audio_path_direct(self, zone: Zone | str | None = None) -> AudioPath:
+        """ Get the audio path of the given zone. """
+        def _parse(text: str) -> tuple[bool, AudioPath]:
+            root = ElementTree.fromstring(text)
+            is_ok = root.attrib['Status'] == 'OK'
+            if not is_ok or not root:
+                return False, AudioPath()
+            direct = False
+            for child in root:
+                if child.attrib['Name'] == 'Direct':
+                    direct = child.text == 'yes'
+                    break
+            return is_ok, AudioPath(direct)
+
+        ok, resp = await self._conn.get('Playback/AudioPathDirect', _parse, params=self.__zone_params(zone))
+        return resp
+
     async def get_audio_path(self, zone: Zone | str | None = None) -> AudioPath:
         """ Get the audio path of the given zone. """
         def _parse(text: str) -> tuple[bool, AudioPath]:
