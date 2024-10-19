@@ -23,6 +23,10 @@ class MediaServerInfo:
         self.name = resp_dict.get('FriendlyName', 'Unknown')
         self.platform = resp_dict.get('Platform', 'Unknown')
         self.updated_at = datetime.datetime.utcnow()
+        try:
+            self.__version_tokens: list[int] = [int(v) for v in self.version.split('.', 3)]
+        except:
+            self.__version_tokens: list[int] = [0, 0, 0]
 
     def __str__(self):
         return f'{self.name} [{self.version}]'
@@ -31,6 +35,10 @@ class MediaServerInfo:
         if isinstance(other, MediaServerInfo):
             return self.name == other.name and self.version == other.version
         return False
+
+    @property
+    def supports_audio_path_direct(self) -> bool:
+        return self.__version_tokens[0] > 33 or (self.__version_tokens[0] == 33 and self.__version_tokens[2] >= 33)
 
 
 class PlaybackInfo:
@@ -644,7 +652,8 @@ class MediaServer:
     async def get_current_playlist(self, fields: list[str] | None = None, zone: Zone | str | None = None) -> list[dict]:
         """ Get the current playlist."""
         if not fields:
-            fields = ['Key', 'Name', 'Media Type', 'Media Sub Type', 'Series', 'Season', 'Episode', 'Artist', 'Album', 'Track #',
+            fields = ['Key', 'Name', 'Media Type', 'Media Sub Type', 'Series', 'Season', 'Episode', 'Artist', 'Album',
+                      'Track #',
                       'Dimensions', 'HDR Format', 'Duration']
         ok, resp = await self._conn.get_as_json_list('Playback/Playlist',
                                                      params={'Fields': ','.join(fields),
@@ -771,6 +780,7 @@ class MediaServer:
 
     async def get_audio_path_direct(self, zone: Zone | str | None = None) -> AudioPath:
         """ Get the audio path of the given zone. """
+
         def _parse(text: str) -> tuple[bool, AudioPath]:
             root = ElementTree.fromstring(text)
             is_ok = root.attrib['Status'] == 'OK'
@@ -788,6 +798,7 @@ class MediaServer:
 
     async def get_audio_path(self, zone: Zone | str | None = None) -> AudioPath:
         """ Get the audio path of the given zone. """
+
         def _parse(text: str) -> tuple[bool, AudioPath]:
             root = ElementTree.fromstring(text)
             is_ok = root.attrib['Status'] == 'OK'
@@ -955,7 +966,8 @@ def _parse_search(search: str) -> tuple[list[MediaType], list[MediaSubType]]:
     return [m for m in mt if m], [m for m in mst if m]
 
 
-def convert_browse_rules(rules: list[BrowseRule], flat: bool = False, infer_media_types: bool = True) -> list[BrowsePath]:
+def convert_browse_rules(rules: list[BrowseRule], flat: bool = False, infer_media_types: bool = True) -> list[
+    BrowsePath]:
     """ Convert the rules into a tree of paths. """
     paths: list[BrowsePath] = []
     all_paths: list[BrowsePath] = []
@@ -995,7 +1007,7 @@ def parse_browse_paths_from_text(input_rules: list[str]) -> list[BrowsePath]:
         vals = input_rule.split('|', 2)
         names = vals[0].split(',')
         for idx, name in enumerate(names):
-            full_name = '\\'.join(names[0: idx+1])
+            full_name = '\\'.join(names[0: idx + 1])
             match = next((rule for rule in browse_rules if rule.name == full_name), None)
             if not match:
                 match = BrowseRule(full_name, "", "")

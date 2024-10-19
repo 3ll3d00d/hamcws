@@ -469,6 +469,11 @@ def test_mediaserverinfo_eq():
         'FriendlyName': 'localhost',
         'Platform': 'Linux'
     })
+    ms_apd = [MediaServerInfo({
+        'ProgramVersion': f'33.0.{v}',
+        'FriendlyName': 'localhost',
+        'Platform': 'Linux'
+    }) for v in range(32,45)]
 
     assert ms1 != None
     assert ms1 == ms2
@@ -476,6 +481,10 @@ def test_mediaserverinfo_eq():
     assert ms1 != ms4
     assert ms1 == ms5
     assert str(ms1) == 'localhost [31.0.87]'
+    assert not ms1.supports_audio_path_direct
+    assert not ms_apd[0].supports_audio_path_direct
+    for ms in ms_apd[1:]:
+        assert ms.supports_audio_path_direct
 
 
 def test_media_type():
