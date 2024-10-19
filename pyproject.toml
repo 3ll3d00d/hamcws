@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "hamcws"
-version = "0.2.5"
+version = "0.2.6"
 description = "homeassistant friendly wrapper for J River MCWS"
 authors = ["3ll3d00d <mattkhan+hamcws@gmail.com>"]
 license = "MIT"
@@ -16,7 +16,8 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.12"
-aiohttp = "^3.10.8"
+# ha-core head is 3.10.10
+aiohttp = "^3.9.1"
 pytest = "^8.3.3"
 
 [tool.poetry.group.dev.dependencies]
