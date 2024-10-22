@@ -485,10 +485,10 @@ class MediaServer:
     def make_url(self, path: str) -> str:
         return self._conn.get_url(path)
 
-    async def get_file_image_url(self, file_key: int) -> str:
+    async def get_file_image_url(self, file_key: int, thumbnail_size: str = 'Large') -> str:
         """ Get image URL for a file given the key. """
         await self._ensure_token()
-        params = f'File={file_key}&Type=Thumbnail&ThumbnailSize=Large&Format=png&Token={self._token}'
+        params = f'File={file_key}&Type=Thumbnail&ThumbnailSize={thumbnail_size}&Format=png&Token={self._token}'
         return f'{self._conn.get_mcws_url("File/GetImage")}?{params}'
 
     async def _ensure_token(self) -> None:
@@ -659,6 +659,9 @@ class MediaServer:
                                                      params={'Fields': ','.join(fields),
                                                              'Action': 'JSON',
                                                              **self.__zone_params(zone)})
+        for e in resp:
+            if 'Key' in e:
+                e['ImageURL'] = await self.get_file_image_url(int(e['Key']), thumbnail_size='small')
         return resp
 
     async def play_file(self, file: str, zone: Zone | str | None = None) -> bool:

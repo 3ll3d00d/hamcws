@@ -858,4 +858,7 @@ async def test_current_playlist(playlist_stub: MediaServer):
     assert resp
     assert len(resp) == 2
     assert isinstance(resp[0], dict)
+    assert 'ImageURL' in resp[0]
     assert isinstance(resp[1], dict)
+    assert 'ImageURL' in resp[1]
+
