@@ -1,24 +1,25 @@
-[tool.poetry]
+[project]
 name = "hamcws"
-version = "0.2.7"
+version = "0.2.8"
 description = "homeassistant friendly wrapper for J River MCWS"
-authors = ["3ll3d00d <mattkhan+hamcws@gmail.com>"]
+authors = [
+    { name = "3ll3d00d", email = "mattkhan+hamcws@gmail.com" }
+]
 license = "MIT"
 readme = "README.md"
 homepage = "http://github.com/3ll3d00d/hamcws"
 repository = "http://github.com/3ll3d00d/hamcws"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "aiohttp >=3.9.1, <4.0.0"
+]
+[tool.poetry]
 include = [
     "LICENSE",
 ]
 packages = [
     { include = "hamcws" }
 ]
-
-[tool.poetry.dependencies]
-python = "^3.12"
-# ha-core head is 3.10.10
-aiohttp = "^3.9.1"
-pytest = "^8.3.3"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
